@@ -183,6 +183,10 @@ dialog::backdrop{background:rgba(0,0,0,.65)}
               <input id="highlightColor" type="color" value="#fef08a" title="Highlight color">
             </div>
             <div id="topFive" class="editor" contenteditable="true"><ol><li><b>Get Biyu production schedule locked.</b></li><li>Finalize artwork waiting on customer approval.</li><li>Confirm all upcoming fighter kit deadlines.</li><li>Follow up with open leads from this week.</li><li>Make sure all paid jobs have an assigned owner.</li></ol></div>
+            <div style="display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:10px">
+              <span id="topFiveSaveStatus" class="sub" style="margin:0"></span>
+              <button id="saveTopFiveBtn" class="btn primary" type="button">Save Top 5</button>
+            </div>
           </section>
 
           <section id="upcoming" class="panel">
@@ -517,6 +521,8 @@ taskName.addEventListener('keydown',e=>{if(e.key==='Enter')renderTaskResults()})
 
 renderCalendar();renderJobs();renderFights();renderContacts();renderPeopleResults();renderTaskResults();
 </script>
+
+  <script type="module" src="./js/top-priorities.js"></script>
 
   <!-- SUPABASE AUTH -->
   <script type="module" src="./js/auth.js"></script>
