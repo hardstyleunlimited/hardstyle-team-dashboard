@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hardstyle Team Dashboard V2</title>
+<style>
+:root{
+  --bg:#0b0d10;--panel:#14171c;--card:#1b1f26;--muted:#98a2b3;--text:#f5f7fa;--border:#2a3039;
+  --accent:#ffffff;--max:#2563eb;--jordan:#16a34a;--connor:#ea580c;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,Arial,sans-serif}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+.shell{display:grid;grid-template-columns:250px 1fr;min-height:100vh}
+.sidebar{position:sticky;top:0;height:100vh;background:#0f1216;border-right:1px solid var(--border);padding:16px;overflow:auto;transition:.2s}
+.sidebar.collapsed{width:72px}
+.sidebar.collapsed .nav-label,.sidebar.collapsed .side-title,.sidebar.collapsed .side-search-wrap{display:none}
+.sidebar.collapsed + .main{margin-left:-178px}
+.side-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:18px}
+.side-title{font-size:14px;font-weight:800;letter-spacing:.08em}
+.iconbtn{width:36px;height:36px;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:9px}
+.side-search-wrap{margin-bottom:12px}
+.side-search{width:100%;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:9px}
+.nav{display:grid;gap:6px}
+.nav button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:transparent;color:var(--text);border:1px solid transparent;border-radius:10px;padding:10px}
+.nav button:hover,.nav button.active{background:var(--card);border-color:var(--border)}
+.nav .ico{width:22px;text-align:center}
+.main{min-width:0;transition:.2s}
+.app{max-width:1500px;margin:0 auto;padding:22px}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:20px}
+.brand small{display:block;color:var(--muted);letter-spacing:.08em}
+.brand h1{font-size:24px;margin:4px 0 0}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{background:transparent;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:9px 12px}
+.btn.primary{background:var(--accent);color:#111;border-color:var(--accent);font-weight:700}
+.grid-top{display:grid;grid-template-columns:2fr 3fr;gap:18px}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:16px}
+.panel h2{font-size:16px;margin:0}
+.sub{color:var(--muted);font-size:13px;margin:4px 0 14px}
+.toolbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.toolbar button,.toolbar select,.toolbar input{background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:7px}
+.editor{min-height:180px;border:1px solid var(--border);border-radius:12px;padding:14px;background:var(--card);outline:none}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:6px}
+.calendar-wrap{overflow-x:auto}
+.week-head,.calendar{display:grid;grid-template-columns:repeat(7,minmax(110px,1fr));min-width:770px;gap:5px}
+.week-head div{text-align:center;color:var(--muted);font-size:12px;padding:4px}
+.day{min-height:115px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px}
+.date{font-weight:700;font-size:13px;margin-bottom:7px}
+.cal-task{border:1px solid var(--border);border-left-width:5px;border-radius:8px;padding:6px;margin:5px 0;font-size:12px}
+.section{margin-top:18px}
+.pipeline{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.col{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:12px;min-height:180px}
+.colhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.badge{font-size:12px;background:#242a33;border:1px solid var(--border);border-radius:999px;padding:3px 8px}
+.job{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:9px}
+.job small{color:var(--muted)}
+.jobtop{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.importance{font-size:11px;border-radius:999px;padding:3px 7px;border:1px solid var(--border);background:#101318}
+.fighters{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.contact{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:8px}
+.search{width:100%;max-width:460px;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+.design-entry{display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center}
+.design-entry .big{font-size:18px;font-weight:700;margin-bottom:5px}
+.page{display:none}.page.active{display:block}
+.back{margin-bottom:16px}
+.upload-layout{display:grid;grid-template-columns:1.05fr 1.4fr;gap:18px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field label{display:block;font-size:13px;color:var(--muted);margin-bottom:5px}
+.field select,.field input,.field textarea{width:100%;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px}
+.qty-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.qty{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px}
+.qty label{font-size:11px;color:var(--muted);display:block;margin-bottom:5px}
+.qty input{width:100%;background:#101318;color:var(--text);border:1px solid var(--border);border-radius:8px;padding:7px}
+.dropzone{border:2px dashed #49515e;border-radius:14px;padding:22px;text-align:center;background:var(--card)}
+.dropzone.drag{border-color:#fff}
+.dropzone strong{display:block;margin-bottom:4px}
+.dropzone input{margin-top:10px}
+.preview-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.preview{background:#0f1217;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.preview img{width:100%;aspect-ratio:1/1;object-fit:cover;display:block}
+.preview .meta{padding:7px;font-size:11px;color:var(--muted);word-break:break-word}
+.upload-panels{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.notice{font-size:12px;color:var(--muted);margin-top:12px}
+.summary{margin-top:16px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;white-space:pre-wrap}
+dialog{border:1px solid var(--border);border-radius:16px;padding:0;background:var(--panel);color:var(--text)}
+dialog::backdrop{background:rgba(0,0,0,.65)}
+.modal{width:min(92vw,540px);padding:18px}
+.modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.full{grid-column:1/-1}
+.modal input,.modal select,.modal textarea{width:100%;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px}
+.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.search-page-grid{display:grid;grid-template-columns:1fr 1.3fr;gap:16px}
+.result-list{display:grid;gap:8px}
+.result{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px}
+.result button{margin-top:8px}
+.timeline{display:grid;gap:10px}
+.timeline-item{position:relative;padding-left:18px}
+.timeline-item:before{content:"";position:absolute;left:3px;top:6px;width:8px;height:8px;border-radius:50%;background:#fff}
+.timeline-item:after{content:"";position:absolute;left:6px;top:16px;bottom:-12px;width:2px;background:var(--border)}
+.timeline-item:last-child:after{display:none}
+.profile-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.profile-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.task-tools{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}
+.task-list{display:grid;gap:8px;margin-top:12px}
+.task-row{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px;display:grid;grid-template-columns:1fr auto;gap:8px}
+.muted{color:var(--muted)}
+@media(max-width:1000px){.shell{grid-template-columns:72px 1fr}.sidebar{width:72px}.sidebar .nav-label,.sidebar .side-title,.sidebar .side-search-wrap{display:none}.sidebar.collapsed + .main{margin-left:0}.grid-top,.upload-layout,.contact-grid,.search-page-grid{grid-template-columns:1fr}.pipeline,.fighters{grid-template-columns:1fr 1fr}.upload-panels{grid-template-columns:1fr}}
+@media(max-width:620px){.app{padding:12px}.pipeline,.fighters,.form-grid,.qty-grid,.modal-grid{grid-template-columns:1fr}.topbar{align-items:flex-start;flex-direction:column}.sidebar{position:fixed;z-index:20;left:0;top:0}.main{margin-left:72px}.full{grid-column:auto}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside id="sidebar" class="sidebar">
+    <div class="side-head"><div class="side-title">HARDSTYLE</div><button id="collapseBtn" class="iconbtn" title="Collapse navigation">☰</button></div>
+    <div class="side-search-wrap"><input id="quickNavSearch" class="side-search" placeholder="Find panel..."></div>
+    <nav class="nav">
+      <button data-scroll="top"><span class="ico">⌂</span><span class="nav-label">Home</span></button>
+      <button data-scroll="upcoming"><span class="ico">◫</span><span class="nav-label">Upcoming</span></button>
+      <button data-scroll="jobs"><span class="ico">▦</span><span class="nav-label">Jobs</span></button>
+      <button data-scroll="fighters"><span class="ico">🥊</span><span class="nav-label">Fighters</span></button>
+      <button data-scroll="contacts"><span class="ico">☏</span><span class="nav-label">Contacts</span></button>
+      <button data-scroll="designwork"><span class="ico">✦</span><span class="nav-label">Design Work</span></button>
+      <button id="openPeopleSearch"><span class="ico">⌕</span><span class="nav-label">Search People</span></button>
+      <button data-scroll="mytasks"><span class="ico">✓</span><span class="nav-label">My Tasks</span></button>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <div class="app">
+      <div id="dashboardPage" class="page active">
+        <div id="top" class="topbar">
+          <div class="brand"><small>HARDSTYLE UNLIMITED • TEAM COMMAND CENTER</small><h1>Dashboard</h1></div>
+          <div class="actions"><button id="addJobBtn" class="btn">+ Add Job</button><button id="addFightBtn" class="btn">+ Add Fight</button></div>
+        </div>
+
+        <div class="grid-top">
+          <section class="panel">
+            <h2>MAX'S TOP 5</h2><p class="sub">The five things the team needs to keep front and center.</p>
+            <div class="toolbar">
+              <button data-cmd="bold"><b>B</b></button><button data-cmd="italic"><i>I</i></button><button data-cmd="strikeThrough"><s>S</s></button>
+              <button data-cmd="insertOrderedList">1.</button><button data-cmd="insertUnorderedList">•</button>
+              <select id="fontSize"><option value="3">Normal</option><option value="2">Small</option><option value="4">Large</option><option value="5">XL</option></select>
+              <input id="textColor" type="color" value="#2563eb" title="Text color">
+              <input id="highlightColor" type="color" value="#fef08a" title="Highlight color">
+            </div>
+            <div id="topFive" class="editor" contenteditable="true"><ol><li><b>Get Biyu production schedule locked.</b></li><li>Finalize artwork waiting on customer approval.</li><li>Confirm all upcoming fighter kit deadlines.</li><li>Follow up with open leads from this week.</li><li>Make sure all paid jobs have an assigned owner.</li></ol></div>
+          </section>
+
+          <section id="upcoming" class="panel">
+            <h2>UPCOMING</h2><p class="sub">Four weeks • Sunday through Saturday • tasks colored by assignee.</p>
+            <div class="legend"><span><i class="dot" style="background:var(--max)"></i>Max</span><span><i class="dot" style="background:var(--jordan)"></i>Jordan</span><span><i class="dot" style="background:var(--connor)"></i>Connor</span></div>
+            <div class="calendar-wrap" style="margin-top:12px"><div class="week-head"><div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div></div><div id="calendar" class="calendar"></div></div>
+          </section>
+        </div>
+
+        <section id="jobs" class="panel section">
+          <h2>JOB PIPELINE</h2><p class="sub">Jobs are sorted by importance, 5 highest to 1 lowest.</p>
+          <div class="pipeline">
+            <div class="col"><div class="colhead"><b>PAID & IN WORK</b><span id="countPaid" class="badge"></span></div><div id="paidJobs"></div></div>
+            <div class="col"><div class="colhead"><b>NEED DESIGN</b><span id="countDesign" class="badge"></span></div><div id="designJobs"></div></div>
+            <div class="col"><div class="colhead"><b>LEADS</b><span id="countLeads" class="badge"></span></div><div id="leadJobs"></div></div>
+          </div>
+        </section>
+
+        <section id="fighters" class="panel section"><h2>FIGHTERS</h2><p class="sub">Upcoming fights sorted by date.</p><div id="fighterCards" class="fighters"></div></section>
+
+        <section id="contacts" class="panel section">
+          <div style="display:flex;justify-content:space-between;gap:12px;align-items:end;flex-wrap:wrap">
+            <div><h2>CONTACTS</h2><p class="sub">Businesses and fighters. Click a name to open their full history.</p></div>
+            <div class="actions">
+              <input id="contactSearch" class="search" placeholder="Search contacts">
+              <button id="addContactBtn" class="btn primary">+ Add Contact</button>
+            </div>
+          </div>
+          <div class="contact-grid">
+            <div><h3>BUSINESSES</h3><div id="businessContacts"></div></div>
+            <div><h3>FIGHTERS</h3><div id="fighterContacts"></div></div>
+          </div>
+          <div id="contactDetailPanel" class="panel" style="margin-top:16px;display:none;background:var(--card)">
+            <div id="contactDetailContent"></div>
+          </div>
+        </section>
+
+        <section id="designwork" class="panel section">
+          <div class="design-entry"><div><h2>DESIGN WORK</h2><div class="big">Team Design Upload Center</div><p class="sub" style="margin-bottom:0">Build order specs, assign quantities, and upload production-ready assets.</p></div><button id="openDesign" class="btn primary">Open Design Uploads →</button></div>
+        </section>
+
+        <section id="mytasks" class="panel section">
+          <h2>MY TASKS</h2><p class="sub">Type a team member's name to see assigned tasks sorted by date.</p>
+          <div class="task-tools"><div class="field"><label for="taskName">Team member</label><input id="taskName" placeholder="Max, Jordan, Connor..."></div><button id="taskSearchBtn" class="btn primary">Find Tasks</button></div>
+          <div id="taskResults" class="task-list"></div>
+        </section>
+      </div>
+
+      <div id="designPage" class="page">
+        <button id="backDashboard" class="btn back">← Back to Dashboard</button>
+        <div class="topbar"><div class="brand"><small>HARDSTYLE UNLIMITED</small><h1>Design Upload Center</h1></div><span class="badge">TEAM WORKSPACE</span></div>
+        <div class="upload-layout">
+          <section class="panel">
+            <h2>ORDER / DESIGN SPECS</h2><p class="sub">Choose the garment type and enter quantities by size.</p>
+            <div class="form-grid">
+              <div class="field"><label for="type">Type</label><select id="type"><option value="">Select type</option><option>Standard Tee</option><option>Heavy Weight Tee</option><option>Standard Shorts</option><option>Gladiator Shorts</option><option>Spats</option><option>Rash Guard</option><option>Special</option></select></div>
+              <div class="field"><label for="jobname">Job / Customer</label><input id="jobname" placeholder="Example: Aswell LA Takeover"></div>
+            </div>
+            <div id="qtyArea"></div>
+            <div class="field" style="margin-top:12px"><label for="notes">Production notes</label><textarea id="notes" rows="4" placeholder="Colors, placement, print notes, special instructions..."></textarea></div>
+            <button id="buildSummary" class="btn primary" style="margin-top:12px">Build Job Summary</button>
+            <div id="summary" class="summary" style="display:none"></div>
+          </section>
+          <section class="panel">
+            <h2>FILE UPLOADS</h2><p class="sub">Drag and drop original files into the correct category.</p>
+            <div class="upload-panels">
+              <div><div id="designDrop" class="dropzone"><strong>DESIGN ASSETS</strong><span class="sub">Artwork, logos, reference images, mockups</span><input id="designFiles" type="file" accept="image/*,.pdf,.ai,.eps,.svg,.psd" multiple></div><div id="designPreview" class="preview-grid"></div></div>
+              <div><div id="sponsorDrop" class="dropzone"><strong>SPONSORS</strong><span class="sub">Sponsor logos and placement assets</span><input id="sponsorFiles" type="file" accept="image/*,.pdf,.ai,.eps,.svg,.psd" multiple></div><div id="sponsorPreview" class="preview-grid"></div></div>
+            </div>
+            <p class="notice">Prototype: uploads remain in this browser session. The production site would store original-resolution files in shared cloud storage.</p>
+          </section>
+        </div>
+      </div>
+
+      <div id="peoplePage" class="page">
+        <button id="backPeople" class="btn back">← Back to Dashboard</button>
+        <div class="topbar"><div class="brand"><small>HARDSTYLE UNLIMITED</small><h1>People Search</h1></div></div>
+        <div class="search-page-grid">
+          <section class="panel">
+            <h2>SEARCH</h2><p class="sub">Find every place a person is referenced.</p>
+            <input id="peopleSearch" class="search" style="max-width:none" placeholder="Type a fighter, customer, team member, business contact...">
+            <div id="peopleResults" class="result-list" style="margin-top:12px"></div>
+          </section>
+          <section class="panel">
+            <h2>PROFILE</h2><p class="sub">History is sorted by date added, newest first.</p>
+            <div id="profileView" class="muted">Select a person to view their profile, designs, orders, fights, tasks, and other references.</div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<dialog id="jobDialog">
+  <div class="modal">
+    <div class="modal-head"><h3 style="margin:0">Add Job</h3><button class="btn closeDialog">Close</button></div>
+    <div class="modal-grid">
+      <div class="field full"><label>Job name</label><input id="jName"></div>
+      <div class="field"><label>Customer / person</label><input id="jPerson"></div>
+      <div class="field"><label>Owner</label><select id="jOwner"><option>Max</option><option>Jordan</option><option>Connor</option></select></div>
+      <div class="field"><label>Status</label><select id="jStatus"><option value="paid">Paid & In Work</option><option value="design">Need Design</option><option value="leads">Leads</option></select></div>
+      <div class="field"><label>Importance (1–5)</label><select id="jImportance"><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option></select></div>
+      <div class="field"><label>Due date</label><input id="jDue" type="date"></div>
+      <div class="field full"><label>Notes</label><textarea id="jNotes" rows="3"></textarea></div>
+      <button id="saveJob" class="btn primary full">Add Job</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="fightDialog">
+  <div class="modal">
+    <div class="modal-head"><h3 style="margin:0">Add Fight</h3><button class="btn closeDialog">Close</button></div>
+    <div class="modal-grid">
+      <div class="field full"><label>Fighter</label><input id="fName"></div>
+      <div class="field full"><label>Promotion / event</label><input id="fEvent"></div>
+      <div class="field"><label>Fight date</label><input id="fDate" type="date"></div>
+      <div class="field"><label>Added date</label><input id="fAdded" type="date" value="2026-08-08"></div>
+      <button id="saveFight" class="btn primary full">Add Fight</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="contactDialog">
+  <div class="modal">
+    <div class="modal-head"><h3 style="margin:0">Add Contact</h3><button class="btn closeDialog">Close</button></div>
+    <div class="modal-grid">
+      <div class="field full"><label>Name</label><input id="cName" placeholder="Person or business name"></div>
+      <div class="field"><label>Phone number</label><input id="cPhone" placeholder="555-555-5555"></div>
+      <div class="field"><label>Instagram</label><input id="cInstagram" placeholder="@username"></div>
+      <div class="field"><label>Type</label>
+        <select id="cType"><option value="businesses">Business</option><option value="fighters">Fighter</option></select>
+      </div>
+      <div class="field"><label>Contact / nickname</label><input id="cPerson" placeholder="Optional"></div>
+      <button id="saveContact" class="btn primary full">Add Contact</button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+const today=new Date('2026-08-08T12:00:00');
+const colors={Max:'var(--max)',Jordan:'var(--jordan)',Connor:'var(--connor)'};
+let jobs=[
+{id:1,name:'Biyu Promotions Order',person:'Biyu Promotions',owner:'Max',status:'paid',due:'2026-08-12',importance:5,added:'2026-07-31',notes:'Baseball tees, Grandy Twins tees, Houston Fight Night tees.'},
+{id:2,name:'Aswell LA Takeover',person:'Michael Aswell',owner:'Jordan',status:'design',due:'2026-08-14',importance:5,added:'2026-08-06',notes:'Finalize artwork and approval assets.'},
+{id:3,name:'Grandy Twins Reorder',person:'Grandy Twins',owner:'Connor',status:'paid',due:'2026-08-17',importance:4,added:'2026-07-26',notes:'Production and fulfillment.'},
+{id:4,name:'New Gym Apparel Inquiry',person:'Iron House MMA',owner:'Max',status:'leads',due:'2026-08-20',importance:3,added:'2026-08-05',notes:'Needs quote and initial design direction.'},
+{id:5,name:'Fernandez Walkout Tee',person:'Kevin Fernandez',owner:'Jordan',status:'design',due:'2026-08-24',importance:4,added:'2026-08-04',notes:'Awaiting final art direction.'},
+{id:6,name:'Houston Fight Night',person:'Biyu Promotions',owner:'Connor',status:'paid',due:'2026-08-28',importance:3,added:'2026-07-31',notes:'Print, QC, packing and delivery.'}
+];
+let fights=[
+{id:101,name:'Michael Aswell',event:'Upcoming Bout',date:'2026-08-29',added:'2026-08-01'},
+{id:102,name:'Kevin Fernandez',event:'Upcoming Fight',date:'2026-09-12',added:'2026-08-02'},
+{id:103,name:'Alden Coria',event:'Upcoming Fight',date:'2026-09-26',added:'2026-07-28'},
+{id:104,name:'Jackson Glass',event:'Upcoming Fight',date:'2026-10-03',added:'2026-07-25'}
+];
+const designs=[
+{id:201,person:'Michael Aswell',title:'LA Takeover Poster',date:'2026-08-06',type:'Design'},
+{id:202,person:'Michael Aswell',title:'Texas Kid Global Takeover Tee',date:'2026-02-16',type:'Design'},
+{id:203,person:'Kevin Fernandez',title:'Lil Dragon Thai Poster',date:'2026-06-16',type:'Design'},
+{id:204,person:'Alden Coria',title:'Cobra Jersey',date:'2026-06-21',type:'Design'},
+{id:205,person:'Jackson Glass',title:'Action Jackson Jersey',date:'2026-06-13',type:'Design'}
+];
+const contacts={
+businesses:[
+{name:'Biyu Promotions',person:'Promotions Team',phone:'562-305-3886',instagram:'@biyupromotions',added:'2026-07-26'},
+{name:'Iron House MMA',person:'Gym Contact',phone:'555-210-0144',instagram:'@ironhousemma',added:'2026-08-05'},
+{name:'Space City Collective',person:'Retail Contact',phone:'555-318-1188',instagram:'@spacecitycollective',added:'2025-12-20'}
+],
+fighters:[
+{name:'Michael Aswell',person:'The Texas Kid',phone:'555-401-1101',instagram:'@michaelaswell',added:'2026-02-16'},
+{name:'Kevin Fernandez',person:'Lil Dragon',phone:'555-401-1102',instagram:'@kevinfernandez',added:'2026-06-15'},
+{name:'Alden Coria',person:'Cobra',phone:'555-401-1103',instagram:'@aldencoria',added:'2026-06-21'},
+{name:'Jackson Glass',person:'Action Jackson',phone:'555-401-1104',instagram:'@jackson.glass',added:'2026-06-05'}
+]
+};
+
+function fmt(v){return new Date(v+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+
+function renderCalendar(){
+ const start=new Date('2026-08-02T12:00:00'),cal=document.getElementById('calendar');cal.innerHTML='';
+ for(let i=0;i<28;i++){
+   const d=new Date(start);d.setDate(start.getDate()+i);
+   const iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+   const cell=document.createElement('div');cell.className='day';
+   const due=jobs.filter(j=>j.due===iso).sort((a,b)=>b.importance-a.importance);
+   cell.innerHTML='<div class="date">'+(d.getMonth()+1)+'/'+d.getDate()+'</div>'+due.map(j=>'<div class="cal-task" style="border-left-color:'+colors[j.owner]+'"><b>'+esc(j.name)+'</b><br><small>'+esc(j.owner)+' • P'+j.importance+'</small></div>').join('');
+   cal.appendChild(cell);
+ }
+}
+function jobHTML(j){return '<div class="job"><div class="jobtop"><div><b>'+esc(j.name)+'</b><br><small>'+esc(j.person)+'</small></div><span class="importance">Importance '+j.importance+'/5</span></div><div style="margin-top:8px"><small>'+esc(j.owner)+' • Due '+fmt(j.due)+'</small></div></div>'}
+function renderJobs(){
+ const sorted=[...jobs].sort((a,b)=>b.importance-a.importance || a.due.localeCompare(b.due));
+ const groups={paid:'paidJobs',design:'designJobs',leads:'leadJobs'};
+ Object.entries(groups).forEach(([status,id])=>document.getElementById(id).innerHTML=sorted.filter(j=>j.status===status).map(jobHTML).join(''));
+ countPaid.textContent=jobs.filter(j=>j.status==='paid').length;
+ countDesign.textContent=jobs.filter(j=>j.status==='design').length;
+ countLeads.textContent=jobs.filter(j=>j.status==='leads').length;
+ renderCalendar();
+}
+function renderFights(){
+ fighterCards.innerHTML=[...fights].sort((a,b)=>a.date.localeCompare(b.date)).map(f=>'<div class="job"><b>'+esc(f.name)+'</b><br><small>'+esc(f.event)+' • '+fmt(f.date)+'</small></div>').join('');
+}
+function renderContacts(q=''){
+ q=q.toLowerCase();
+ const match=x=>Object.values(x).some(v=>String(v).toLowerCase().includes(q));
+ const row=(c,type)=>'<div class="contact"><button class="contactNameBtn" data-contact-name="'+esc(c.name)+'" data-contact-type="'+type+'" style="background:none;border:0;color:var(--text);padding:0;font-weight:700;text-align:left;text-decoration:underline;text-underline-offset:3px">'+esc(c.name)+'</button><br><small>'+esc(c.person||'')+'</small><div style="margin-top:6px;font-size:13px"><span>'+esc(c.phone||'')+'</span>'+(c.instagram?' • <span>'+esc(c.instagram)+'</span>':'')+'</div></div>';
+ businessContacts.innerHTML=contacts.businesses.filter(match).map(c=>row(c,'businesses')).join('');
+ fighterContacts.innerHTML=contacts.fighters.filter(match).map(c=>row(c,'fighters')).join('');
+ document.querySelectorAll('.contactNameBtn').forEach(b=>b.addEventListener('click',()=>showContactDetail(b.dataset.contactName,b.dataset.contactType)));
+}
+function showContactDetail(name,type){
+ const c=contacts[type].find(x=>x.name===name); if(!c)return;
+ const history=personHistory(name);
+ contactDetailPanel.style.display='block';
+ contactDetailContent.innerHTML='<div class="profile-head"><div><h3 style="margin:0">'+esc(c.name)+'</h3><div class="profile-meta"><span class="badge">'+esc(type==='businesses'?'Business':'Fighter')+'</span>'+(c.phone?'<span class="badge">'+esc(c.phone)+'</span>':'')+(c.instagram?'<span class="badge">'+esc(c.instagram)+'</span>':'')+'</div>'+(c.person?'<div class="muted" style="margin-top:8px">'+esc(c.person)+'</div>':'')+'</div><button id="closeContactDetail" class="btn">Close</button></div><div class="timeline" style="margin-top:18px">'+(history.length?history.map(x=>'<div class="timeline-item"><b>'+esc(x.type)+': '+esc(x.title)+'</b><div class="muted" style="font-size:12px">'+fmt(x.date)+'</div><div style="margin-top:4px">'+esc(x.detail)+'</div></div>').join(''):'<div class="muted">No linked history yet.</div>')+'</div>';
+ document.getElementById('closeContactDetail').addEventListener('click',()=>contactDetailPanel.style.display='none');
+ contactDetailPanel.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+addJobBtn.addEventListener('click',()=>jobDialog.showModal());
+addFightBtn.addEventListener('click',()=>fightDialog.showModal());
+addContactBtn.addEventListener('click',()=>contactDialog.showModal());
+document.querySelectorAll('.closeDialog').forEach(b=>b.addEventListener('click',()=>b.closest('dialog').close()));
+saveJob.addEventListener('click',()=>{
+ const name=jName.value.trim(),due=jDue.value;
+ if(!name||!due){alert('Please enter a job name and due date.');return}
+ jobs.push({id:Date.now(),name,person:jPerson.value.trim()||'Unassigned',owner:jOwner.value,status:jStatus.value,due,importance:Number(jImportance.value),added:'2026-08-08',notes:jNotes.value.trim()});
+ jobDialog.close();['jName','jPerson','jDue','jNotes'].forEach(id=>document.getElementById(id).value='');renderJobs();renderPeopleResults(peopleSearch.value);
+});
+saveFight.addEventListener('click',()=>{
+ const name=fName.value.trim(),date=fDate.value;
+ if(!name||!date){alert('Please enter a fighter name and fight date.');return}
+ fights.push({id:Date.now(),name,event:fEvent.value.trim()||'Upcoming Fight',date,added:fAdded.value||'2026-08-08'});
+ fightDialog.close();['fName','fEvent','fDate'].forEach(id=>document.getElementById(id).value='');renderFights();renderPeopleResults(peopleSearch.value);
+});
+
+saveContact.addEventListener('click',()=>{
+ const name=cName.value.trim();
+ if(!name){alert('Please enter a contact name.');return}
+ contacts[cType.value].push({name,person:cPerson.value.trim(),phone:cPhone.value.trim(),instagram:cInstagram.value.trim(),added:'2026-08-08'});
+ contactDialog.close();
+ ['cName','cPhone','cInstagram','cPerson'].forEach(id=>document.getElementById(id).value='');
+ renderContacts(contactSearch.value);
+ renderPeopleResults(peopleSearch.value);
+});
+
+document.querySelectorAll('[data-cmd]').forEach(b=>b.addEventListener('click',()=>document.execCommand(b.dataset.cmd,false,null)));
+fontSize.addEventListener('change',e=>document.execCommand('fontSize',false,e.target.value));
+textColor.addEventListener('input',e=>document.execCommand('foreColor',false,e.target.value));
+highlightColor.addEventListener('input',e=>document.execCommand('hiliteColor',false,e.target.value));
+contactSearch.addEventListener('input',e=>renderContacts(e.target.value));
+
+collapseBtn.addEventListener('click',()=>sidebar.classList.toggle('collapsed'));
+document.querySelectorAll('[data-scroll]').forEach(b=>b.addEventListener('click',()=>{
+ dashboardPage.classList.add('active');designPage.classList.remove('active');peoplePage.classList.remove('active');
+ document.getElementById(b.dataset.scroll).scrollIntoView({behavior:'smooth',block:'start'});
+}));
+quickNavSearch.addEventListener('input',e=>{
+ const q=e.target.value.toLowerCase();document.querySelectorAll('.nav button').forEach(b=>{const t=b.innerText.toLowerCase();b.style.display=t.includes(q)?'flex':'none'});
+});
+
+openDesign.addEventListener('click',()=>{dashboardPage.classList.remove('active');peoplePage.classList.remove('active');designPage.classList.add('active');window.scrollTo(0,0)});
+backDashboard.addEventListener('click',()=>{designPage.classList.remove('active');dashboardPage.classList.add('active');window.scrollTo(0,0)});
+openPeopleSearch.addEventListener('click',()=>{dashboardPage.classList.remove('active');designPage.classList.remove('active');peoplePage.classList.add('active');window.scrollTo(0,0)});
+backPeople.addEventListener('click',()=>{peoplePage.classList.remove('active');dashboardPage.classList.add('active');window.scrollTo(0,0)});
+
+const teeSizes=['3T','4T','5T','6T','YS','YM','YL','SMALL','MEDIUM','LARGE','XL','2XL','3XL','4XL','5XL'];
+const waistSizes=['24','26','28','30','32','34','36','38','40','42','44','46','48','50'];
+const rashSizes=['YS','YM','YL','SMALL','MEDIUM','LARGE','XL','2XL','3XL','4XL','5XL'];
+function qtyPanel(labels,title){return '<h3 style="margin:16px 0 4px">'+title+'</h3><div class="qty-grid">'+labels.map(s=>'<div class="qty"><label>'+s+'</label><input type="number" min="0" value="0" data-size="'+s+'"></div>').join('')+'</div>'}
+type.addEventListener('change',e=>{
+ const v=e.target.value;
+ if(['Standard Tee','Heavy Weight Tee','Special'].includes(v)) qtyArea.innerHTML=qtyPanel(teeSizes,'QUANTITY BY SIZE');
+ else if(['Standard Shorts','Gladiator Shorts','Spats'].includes(v)) qtyArea.innerHTML=qtyPanel(waistSizes,'QUANTITY BY WAIST SIZE');
+ else if(v==='Rash Guard') qtyArea.innerHTML=qtyPanel(rashSizes,'QUANTITY BY SIZE');
+ else qtyArea.innerHTML='';
+});
+buildSummary.addEventListener('click',()=>{
+ const entries=[...document.querySelectorAll('#qtyArea input[data-size]')].filter(x=>Number(x.value)>0).map(x=>x.dataset.size+': '+x.value);
+ summary.style.display='block';summary.textContent='JOB: '+(jobname.value||'Untitled job')+'\nTYPE: '+(type.value||'Not selected')+'\nQUANTITIES: '+(entries.join(', ')||'None entered')+'\nNOTES: '+(notes.value||'None');
+});
+function setupDrop(zoneId,inputId,previewId){
+ const zone=document.getElementById(zoneId),input=document.getElementById(inputId),preview=document.getElementById(previewId);
+ function handle(files){[...files].forEach(file=>{const card=document.createElement('div');card.className='preview';const meta='<div class="meta">'+esc(file.name)+'<br>'+Math.max(.01,file.size/1024/1024).toFixed(2)+' MB</div>';if(file.type.startsWith('image/')){const url=URL.createObjectURL(file);card.innerHTML='<img src="'+url+'" alt="">'+meta}else card.innerHTML='<div style="padding:24px 8px;text-align:center;font-weight:700">FILE</div>'+meta;preview.appendChild(card)})}
+ ['dragenter','dragover'].forEach(ev=>zone.addEventListener(ev,e=>{e.preventDefault();zone.classList.add('drag')}));
+ ['dragleave','drop'].forEach(ev=>zone.addEventListener(ev,e=>{e.preventDefault();zone.classList.remove('drag')}));
+ zone.addEventListener('drop',e=>handle(e.dataTransfer.files));input.addEventListener('change',e=>handle(e.target.files));
+}
+setupDrop('designDrop','designFiles','designPreview');setupDrop('sponsorDrop','sponsorFiles','sponsorPreview');
+
+function allPeople(){
+ const set=new Set();
+ jobs.forEach(j=>{set.add(j.person);set.add(j.owner)});
+ fights.forEach(f=>set.add(f.name));
+ designs.forEach(d=>set.add(d.person));
+ contacts.businesses.forEach(c=>set.add(c.name));
+ contacts.fighters.forEach(c=>set.add(c.name));
+ return [...set].filter(Boolean).sort();
+}
+function personHistory(name){
+ const h=[];
+ jobs.filter(j=>j.person.toLowerCase()===name.toLowerCase()||j.owner.toLowerCase()===name.toLowerCase()).forEach(j=>h.push({date:j.added,type:'Order / Job',title:j.name,detail:(j.person.toLowerCase()===name.toLowerCase()?'Customer':'Assigned owner')+' • Due '+fmt(j.due)+' • Importance '+j.importance+'/5'}));
+ fights.filter(f=>f.name.toLowerCase()===name.toLowerCase()).forEach(f=>h.push({date:f.added,type:'Fight',title:f.event,detail:'Fight date '+fmt(f.date)}));
+ designs.filter(d=>d.person.toLowerCase()===name.toLowerCase()).forEach(d=>h.push({date:d.date,type:'Design',title:d.title,detail:'Design asset'}));
+ contacts.businesses.filter(c=>c.name.toLowerCase()===name.toLowerCase()).forEach(c=>h.push({date:c.added,type:'Contact',title:c.name,detail:c.person}));
+ contacts.fighters.filter(c=>c.name.toLowerCase()===name.toLowerCase()).forEach(c=>h.push({date:c.added,type:'Contact',title:c.name,detail:c.person}));
+ return h.sort((a,b)=>b.date.localeCompare(a.date));
+}
+function renderPeopleResults(q=''){
+ q=q.trim().toLowerCase();const names=allPeople().filter(n=>!q||n.toLowerCase().includes(q));
+ peopleResults.innerHTML=names.map(n=>'<div class="result"><b>'+esc(n)+'</b><div class="muted" style="font-size:12px">'+personHistory(n).length+' references</div><button class="btn viewProfile" data-name="'+esc(n)+'">Open Profile</button></div>').join('')||'<div class="muted">No matches.</div>';
+ document.querySelectorAll('.viewProfile').forEach(b=>b.addEventListener('click',()=>showProfile(b.dataset.name)));
+}
+function showProfile(name){
+ const history=personHistory(name);
+ const designCount=designs.filter(d=>d.person.toLowerCase()===name.toLowerCase()).length;
+ const orderCount=jobs.filter(j=>j.person.toLowerCase()===name.toLowerCase()).length;
+ const fightCount=fights.filter(f=>f.name.toLowerCase()===name.toLowerCase()).length;
+ const taskCount=jobs.filter(j=>j.owner.toLowerCase()===name.toLowerCase()).length;
+ profileView.innerHTML='<div class="profile-head"><div><h3 style="margin:0">'+esc(name)+'</h3><div class="profile-meta"><span class="badge">'+designCount+' designs</span><span class="badge">'+orderCount+' orders</span><span class="badge">'+fightCount+' fights</span><span class="badge">'+taskCount+' assigned tasks</span></div></div></div><div class="timeline" style="margin-top:18px">'+history.map(x=>'<div class="timeline-item"><b>'+esc(x.type)+': '+esc(x.title)+'</b><div class="muted" style="font-size:12px">'+fmt(x.date)+'</div><div style="margin-top:4px">'+esc(x.detail)+'</div></div>').join('')+'</div>';
+}
+peopleSearch.addEventListener('input',e=>renderPeopleResults(e.target.value));
+
+function renderTaskResults(){
+ const q=taskName.value.trim().toLowerCase();
+ const rows=jobs.filter(j=>j.owner.toLowerCase().includes(q)).sort((a,b)=>a.due.localeCompare(b.due));
+ taskResults.innerHTML=rows.length?rows.map(j=>'<div class="task-row"><div><b>'+esc(j.name)+'</b><div class="muted" style="font-size:12px">'+esc(j.person)+' • '+esc(j.status)+'</div></div><div style="text-align:right"><b>'+fmt(j.due)+'</b><div class="muted" style="font-size:12px">Importance '+j.importance+'/5</div></div></div>').join(''):'<div class="muted">No assigned tasks found.</div>';
+}
+taskSearchBtn.addEventListener('click',renderTaskResults);
+taskName.addEventListener('keydown',e=>{if(e.key==='Enter')renderTaskResults()});
+
+renderCalendar();renderJobs();renderFights();renderContacts();renderPeopleResults();renderTaskResults();
+</script>
+</body>
+</html>
