@@ -292,12 +292,14 @@ dialog::backdrop{background:rgba(0,0,0,.65)}
     <div class="modal-head"><h3 style="margin:0">Add Job</h3><button class="btn closeDialog">Close</button></div>
     <div class="modal-grid">
       <div class="field full"><label>Job name</label><input id="jName"></div>
-      <div class="field"><label>Customer / person</label><input id="jPerson"></div>
-      <div class="field"><label>Owner</label><select id="jOwner"><option>Max</option><option>Jordan</option><option>Connor</option></select></div>
-      <div class="field"><label>Status</label><select id="jStatus"><option value="paid">Paid & In Work</option><option value="design">Need Design</option><option value="leads">Leads</option></select></div>
-      <div class="field"><label>Importance (1–5)</label><select id="jImportance"><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option></select></div>
+      <div class="field"><label>Customer / person</label><select id="jContact"><option value="">Select contact</option></select></div>
+      <div class="field"><label>Owner</label><select id="jOwner"><option value="">Select owner</option></select></div>
+      <div class="field"><label>Status</label><select id="jStatus"><option value="paid_in_work">Paid & In Work</option><option value="need_design">Need Design</option><option value="leads">Leads</option><option value="complete">Complete</option></select></div>
+      <div class="field"><label>Importance (1–5)</label><select id="jImportance"><option>5</option><option>4</option><option selected>3</option><option>2</option><option>1</option></select></div>
       <div class="field"><label>Due date</label><input id="jDue" type="date"></div>
       <div class="field full"><label>Notes</label><textarea id="jNotes" rows="3"></textarea></div>
+      <div class="field full"><label><input id="jShowCalendar" type="checkbox" checked style="width:auto;margin-right:8px">Show on Upcoming calendar</label></div>
+      <div id="jobFormStatus" class="full muted" style="min-height:18px"></div>
       <button id="saveJob" class="btn primary full">Add Job</button>
     </div>
   </div>
@@ -307,10 +309,15 @@ dialog::backdrop{background:rgba(0,0,0,.65)}
   <div class="modal">
     <div class="modal-head"><h3 style="margin:0">Add Fight</h3><button class="btn closeDialog">Close</button></div>
     <div class="modal-grid">
-      <div class="field full"><label>Fighter</label><input id="fName"></div>
-      <div class="field full"><label>Promotion / event</label><input id="fEvent"></div>
+      <div class="field full"><label>Fighter</label><select id="fFighter"><option value="">Select fighter</option></select></div>
+      <div class="field"><label>Opponent</label><input id="fOpponent" placeholder="Opponent name or TBD"></div>
+      <div class="field"><label>Promotion</label><input id="fPromotion" placeholder="UFC, Fury FC, etc."></div>
+      <div class="field full"><label>Event name</label><input id="fEvent" placeholder="Event name"></div>
       <div class="field"><label>Fight date</label><input id="fDate" type="date"></div>
-      <div class="field"><label>Added date</label><input id="fAdded" type="date" value="2026-08-08"></div>
+      <div class="field"><label>Result</label><input id="fResult" placeholder="Optional"></div>
+      <div class="field full"><label>Notes</label><textarea id="fNotes" rows="3"></textarea></div>
+      <div class="field full"><label><input id="fShowCalendar" type="checkbox" checked style="width:auto;margin-right:8px">Show on Upcoming calendar</label></div>
+      <div id="fightFormStatus" class="full muted" style="min-height:18px"></div>
       <button id="saveFight" class="btn primary full">Add Fight</button>
     </div>
   </div>
@@ -403,22 +410,8 @@ function showContactDetail(name,type){
  contactDetailPanel.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
-addJobBtn.addEventListener('click',()=>jobDialog.showModal());
-addFightBtn.addEventListener('click',()=>fightDialog.showModal());
 addContactBtn.addEventListener('click',()=>contactDialog.showModal());
 document.querySelectorAll('.closeDialog').forEach(b=>b.addEventListener('click',()=>b.closest('dialog').close()));
-saveJob.addEventListener('click',()=>{
- const name=jName.value.trim(),due=jDue.value;
- if(!name||!due){alert('Please enter a job name and due date.');return}
- jobs.push({id:Date.now(),name,person:jPerson.value.trim()||'Unassigned',owner:jOwner.value,status:jStatus.value,due,importance:Number(jImportance.value),added:'2026-08-08',notes:jNotes.value.trim()});
- jobDialog.close();['jName','jPerson','jDue','jNotes'].forEach(id=>document.getElementById(id).value='');renderJobs();renderPeopleResults(peopleSearch.value);
-});
-saveFight.addEventListener('click',()=>{
- const name=fName.value.trim(),date=fDate.value;
- if(!name||!date){alert('Please enter a fighter name and fight date.');return}
- fights.push({id:Date.now(),name,event:fEvent.value.trim()||'Upcoming Fight',date,added:fAdded.value||'2026-08-08'});
- fightDialog.close();['fName','fEvent','fDate'].forEach(id=>document.getElementById(id).value='');renderFights();renderPeopleResults(peopleSearch.value);
-});
 
 saveContact.addEventListener('click',()=>{
  const name=cName.value.trim();
@@ -519,6 +512,9 @@ renderJobs();renderFights();renderContacts();renderPeopleResults();renderTaskRes
 </script>
 
   <script type="module" src="./js/top-priorities.js"></script>
+
+  <!-- JOB + FIGHT DATABASE FORMS -->
+  <script type="module" src="./js/jobs-fights.js"></script>
 
   <!-- UPCOMING CALENDAR DATABASE -->
   <script type="module" src="./js/calendar.js"></script>
