@@ -1,2676 +1,932 @@
-import { supabase } from './supabase.js';
-
-
-/* =========================================================
-   CONFIG
-========================================================= */
-
-const STORAGE_BUCKET =
-  'hardstyle-designs';
-
-
-const SHIRT_SIZES = [
-  '3T',
-  '4T',
-  '5T',
-  '6T',
-  'YS',
-  'YM',
-  'YL',
-  'SMALL',
-  'MEDIUM',
-  'LARGE',
-  'XL',
-  '2XL',
-  '3XL',
-  '4XL',
-  '5XL'
-];
-
-
-const RASH_GUARD_SIZES = [
-  'YS',
-  'YM',
-  'YL',
-  'SMALL',
-  'MEDIUM',
-  'LARGE',
-  'XL',
-  '2XL',
-  '3XL',
-  '4XL',
-  '5XL'
-];
-
-
-const WAIST_SIZES = [
-  '24',
-  '26',
-  '28',
-  '30',
-  '32',
-  '34',
-  '36',
-  '38',
-  '40',
-  '42',
-  '44',
-  '46'
-];
-
-
-const PRODUCT_LABELS = {
-
-  standard_tee:
-    'Standard Tee',
-
-  heavy_weight_tee:
-    'Heavy Weight Tee',
-
-  standard_shorts:
-    'Standard Shorts',
-
-  gladiator_shorts:
-    'Gladiator Shorts',
-
-  spats:
-    'Spats',
-
-  rash_guard:
-    'Rash Guard',
-
-  special:
-    'Special'
-
-};
-
-
-/* =========================================================
-   URL PARAMETERS
-========================================================= */
-
-/*
-  This allows links like:
-
-  designs.html?job=123
-
-  to automatically open the correct
-  job in Design Work.
-*/
-
-const urlParams =
-  new URLSearchParams(
-    window.location.search
-  );
-
-
-const requestedJobId =
-  urlParams.get('job');
-
-
-/* =========================================================
-   DOM
-========================================================= */
-
-const notLoggedIn =
-  document.getElementById(
-    'notLoggedIn'
-  );
-
-
-const designApp =
-  document.getElementById(
-    'designApp'
-  );
-
-
-const newDesignBtn =
-  document.getElementById(
-    'newDesignBtn'
-  );
-
-
-const designSearch =
-  document.getElementById(
-    'designSearch'
-  );
-
-
-const designProjectList =
-  document.getElementById(
-    'designProjectList'
-  );
-
-
-const designFormHeading =
-  document.getElementById(
-    'designFormHeading'
-  );
-
-
-const designIdText =
-  document.getElementById(
-    'designIdText'
-  );
-
-
-const savedBadge =
-  document.getElementById(
-    'savedBadge'
-  );
-
-
-const dTitle =
-  document.getElementById(
-    'dTitle'
-  );
-
-
-const dJob =
-  document.getElementById(
-    'dJob'
-  );
-
-
-const dContact =
-  document.getElementById(
-    'dContact'
-  );
-
-
-const dType =
-  document.getElementById(
-    'dType'
-  );
-
-
-const dNotes =
-  document.getElementById(
-    'dNotes'
-  );
-
-
-const sizeGrid =
-  document.getElementById(
-    'sizeGrid'
-  );
-
-
-const sizeDescription =
-  document.getElementById(
-    'sizeDescription'
-  );
-
-
-const totalQuantity =
-  document.getElementById(
-    'totalQuantity'
-  );
-
-
-const designStatus =
-  document.getElementById(
-    'designStatus'
-  );
-
-
-const saveDesignBtn =
-  document.getElementById(
-    'saveDesignBtn'
-  );
-
-
-const uploadNotice =
-  document.getElementById(
-    'uploadNotice'
-  );
-
-
-const designAssetDropzone =
-  document.getElementById(
-    'designAssetDropzone'
-  );
-
-
-const designAssetFiles =
-  document.getElementById(
-    'designAssetFiles'
-  );
-
-
-const designAssetStatus =
-  document.getElementById(
-    'designAssetStatus'
-  );
-
-
-const designAssetList =
-  document.getElementById(
-    'designAssetList'
-  );
-
-
-const sponsorDropzone =
-  document.getElementById(
-    'sponsorDropzone'
-  );
-
-
-const sponsorFiles =
-  document.getElementById(
-    'sponsorFiles'
-  );
-
-
-const sponsorStatus =
-  document.getElementById(
-    'sponsorStatus'
-  );
-
-
-const sponsorList =
-  document.getElementById(
-    'sponsorList'
-  );
-
-
-/* =========================================================
-   STATE
-========================================================= */
-
-let currentUser =
-  null;
-
-
-let currentDesignId =
-  null;
-
-
-let designsCache =
-  [];
-
-
-let contactsCache =
-  [];
-
-
-let jobsCache =
-  [];
-
-
-let uploadsCache =
-  [];
-
-
-let currentQuantities =
-  {};
-
-
-/* =========================================================
-   HELPERS
-========================================================= */
-
-function esc(value) {
-
-  return String(
-    value ?? ''
-  ).replace(
-    /[&<>"']/g,
-    char => ({
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#39;'
-    }[char])
-  );
-
-}
-
-
-function setStatus(
-  element,
-  message,
-  error = false
-) {
-
-  if (!element) {
-    return;
-  }
-
-
-  element.textContent =
-    message;
-
-
-  element.style.color =
-    error
-      ? '#fca5a5'
-      : '';
-
-}
-
-
-function safeFilename(
-  filename
-) {
-
-  const parts =
-    String(
-      filename || 'file'
-    ).split('.');
-
-
-  let extension =
-    '';
-
-
-  if (
-    parts.length > 1
-  ) {
-
-    extension =
-      `.${parts
-        .pop()
-        .toLowerCase()
-        .replace(
-          /[^a-z0-9]/g,
-          ''
-        )}`;
-
-  }
-
-
-  const base =
-    parts
-      .join('.')
-      .trim()
-      .replace(
-        /[^a-zA-Z0-9-_]+/g,
-        '-'
-      )
-      .replace(
-        /-+/g,
-        '-'
-      )
-      .replace(
-        /^-+|-+$/g,
-        ''
-      );
-
-
-  return (
-    (base || 'file') +
-    extension
-  );
-
-}
-
-
-function getSizesForType(
-  type
-) {
-
-  if (
-    type ===
-      'standard_shorts' ||
-
-    type ===
-      'gladiator_shorts' ||
-
-    type ===
-      'spats'
-  ) {
-
-    return WAIST_SIZES;
-
-  }
-
-
-  if (
-    type ===
-    'rash_guard'
-  ) {
-
-    return RASH_GUARD_SIZES;
-
-  }
-
-
-  return SHIRT_SIZES;
-
-}
-
-
-function getSizeDescription(
-  type
-) {
-
-  if (
-    type ===
-      'standard_shorts' ||
-
-    type ===
-      'gladiator_shorts' ||
-
-    type ===
-      'spats'
-  ) {
-
-    return 'Waist sizes';
-
-  }
-
-
-  if (
-    type ===
-    'rash_guard'
-  ) {
-
-    return 'Youth and adult rash guard sizes';
-
-  }
-
-
-  return 'Youth and adult garment sizes';
-
-}
-
-
-function calculateTotal() {
-
-  const total =
-    Object.values(
-      currentQuantities
-    ).reduce(
-      (
-        sum,
-        quantity
-      ) =>
-        sum +
-        Number(
-          quantity || 0
-        ),
-      0
-    );
-
-
-  totalQuantity.textContent =
-    String(total);
-
-}
-
-
-/* =========================================================
-   AUTH
-========================================================= */
-
-async function checkAuth() {
-
-  const {
-    data: { session },
-    error
-  } =
-    await supabase.auth
-      .getSession();
-
-
-  if (error) {
-
-    console.error(
-      'Design auth error:',
-      error
-    );
-
-  }
-
-
-  if (
-    !session?.user
-  ) {
-
-    designApp.style.display =
-      'none';
-
-
-    notLoggedIn.style.display =
-      'block';
-
-
-    return false;
-
-  }
-
-
-  currentUser =
-    session.user;
-
-
-  notLoggedIn.style.display =
-    'none';
-
-
-  designApp.style.display =
-    'block';
-
-
-  return true;
-
-}
-
-
-/* =========================================================
-   LOAD CONTACTS + JOBS
-========================================================= */
-
-async function loadOptions() {
-
-  const [
-    contactsResult,
-    jobsResult
-  ] =
-    await Promise.all([
-
-
-      supabase
-        .from('contacts')
-        .select(`
-          id,
-          name,
-          contact_type
-        `)
-        .order(
-          'name',
-          {
-            ascending: true
-          }
-        ),
-
-
-      supabase
-        .from('jobs')
-        .select(`
-          id,
-          name,
-          contact_id,
-          status,
-          due_date
-        `)
-        .order(
-          'due_date',
-          {
-            ascending: true,
-            nullsFirst: false
-          }
-        )
-
-    ]);
-
-
-  if (
-    contactsResult.error
-  ) {
-
-    throw contactsResult.error;
-
-  }
-
-
-  if (
-    jobsResult.error
-  ) {
-
-    throw jobsResult.error;
-
-  }
-
-
-  contactsCache =
-    contactsResult.data ??
-    [];
-
-
-  jobsCache =
-    jobsResult.data ??
-    [];
-
-
-  renderContactOptions();
-
-  renderJobOptions();
-
-}
-
-
-/* =========================================================
-   CONTACT OPTIONS
-========================================================= */
-
-function renderContactOptions(
-  selectedId = null
-) {
-
-  dContact.innerHTML = `
-
-    <option value="">
-      Select contact
-    </option>
-
-    ${
-      contactsCache
-        .map(
-          contact => `
-
-            <option
-              value="${contact.id}"
-
-              ${
-                Number(
-                  selectedId
-                ) ===
-                Number(
-                  contact.id
-                )
-                  ? 'selected'
-                  : ''
-              }
-            >
-
-              ${esc(contact.name)}
-
-              •
-              ${esc(
-                contact.contact_type
-              )}
-
-            </option>
-
-          `
-        )
-        .join('')
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Hardstyle Design & Upload Center</title>
+
+  <style>
+    :root {
+      --bg: #0b0b0c;
+      --panel: #111216;
+      --card: #17181d;
+      --border: #2a2c33;
+      --text: #f4f4f5;
+      --muted: #9ca3af;
+      --accent: #ffffff;
     }
 
-  `;
-
-}
-
-
-/* =========================================================
-   JOB OPTIONS
-========================================================= */
-
-function renderJobOptions(
-  selectedId = null
-) {
-
-  dJob.innerHTML = `
-
-    <option value="">
-      No linked job
-    </option>
-
-    ${
-      jobsCache
-        .map(
-          job => `
-
-            <option
-              value="${job.id}"
-
-              ${
-                Number(
-                  selectedId
-                ) ===
-                Number(
-                  job.id
-                )
-                  ? 'selected'
-                  : ''
-              }
-            >
-
-              ${esc(job.name)}
-
-            </option>
-
-          `
-        )
-        .join('')
+    * {
+      box-sizing: border-box;
     }
 
-  `;
-
-}
-
-
-/* =========================================================
-   JOB -> CONTACT AUTO SELECT
-========================================================= */
-
-dJob.addEventListener(
-  'change',
-  () => {
-
-    if (
-      !dJob.value
-    ) {
-      return;
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, Arial, Helvetica, sans-serif;
     }
 
-
-    const job =
-      jobsCache.find(
-        item =>
-          Number(item.id) ===
-          Number(dJob.value)
-      );
-
-
-    if (
-      job?.contact_id
-    ) {
-
-      dContact.value =
-        String(
-          job.contact_id
-        );
-
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
     }
 
-  }
-);
-
-
-/* =========================================================
-   SIZE GRID
-========================================================= */
-
-function renderSizeGrid(
-  quantities = null
-) {
-
-  const type =
-    dType.value;
-
-
-  const sizes =
-    getSizesForType(
-      type
-    );
-
-
-  const previous =
-    quantities ??
-    currentQuantities ??
-    {};
-
-
-  currentQuantities =
-    {};
-
-
-  sizes.forEach(
-    size => {
-
-      currentQuantities[size] =
-        Number(
-          previous[size] || 0
-        );
-
+    button {
+      cursor: pointer;
     }
-  );
+
+    a {
+      color: inherit;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+
+      padding: 14px 18px;
+
+      background: rgba(11, 11, 12, .96);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .brand {
+      font-weight: 900;
+      letter-spacing: .5px;
+    }
+
+    .top-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn {
+      padding: 9px 12px;
+
+      color: var(--text);
+      background: var(--card);
+
+      border: 1px solid var(--border);
+      border-radius: 9px;
+
+      text-decoration: none;
+    }
+
+    .btn.primary {
+      color: #111;
+      background: #f4f4f5;
+      border-color: #f4f4f5;
+      font-weight: 700;
+    }
+
+    .btn:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+
+    main {
+      width: min(1500px, 100%);
+      margin: auto;
+      padding: 20px;
+    }
+
+    .panel {
+      margin-bottom: 18px;
+      padding: 16px;
+
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+
+      margin-bottom: 14px;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4 {
+      margin-top: 0;
+    }
+
+    .sub,
+    .muted {
+      color: var(--muted);
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: 330px minmax(0, 1fr);
+      gap: 18px;
+    }
+
+    .project-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .project-card {
+      width: 100%;
+      padding: 11px;
+
+      color: var(--text);
+      background: var(--card);
+
+      border: 1px solid var(--border);
+      border-radius: 10px;
+
+      text-align: left;
+    }
+
+    .project-card:hover {
+      border-color: #555b66;
+    }
+
+    .project-card.active {
+      border-color: #f4f4f5;
+    }
+
+    .project-card strong {
+      display: block;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .field.full {
+      grid-column: 1 / -1;
+    }
+
+    .field label {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .field input,
+    .field select,
+    .field textarea {
+      width: 100%;
+      padding: 10px;
+
+      color: var(--text);
+      background: var(--card);
+
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    .size-heading {
+      margin-top: 18px;
+      margin-bottom: 8px;
+    }
+
+    .size-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(80px, 1fr));
+      gap: 8px;
+    }
+
+    .size-box {
+      padding: 8px;
+
+      background: var(--card);
+
+      border: 1px solid var(--border);
+      border-radius: 9px;
+    }
+
+    .size-box label {
+      display: block;
+      margin-bottom: 5px;
+
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .size-box input {
+      width: 100%;
+      padding: 7px;
+
+      color: var(--text);
+      background: #101115;
+
+      border: 1px solid var(--border);
+      border-radius: 7px;
+    }
+
+    .summary-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      margin-top: 10px;
+      padding: 10px;
+
+      background: var(--card);
+
+      border: 1px solid var(--border);
+      border-radius: 9px;
+    }
+
+    .upload-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+
+      margin-top: 18px;
+    }
+
+    .upload-card {
+      padding: 14px;
+
+      background: var(--card);
+
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+
+    .dropzone {
+      padding: 30px 14px;
+
+      text-align: center;
+
+      border: 2px dashed #4b5563;
+      border-radius: 12px;
+
+      transition:
+        border-color .15s ease,
+        background .15s ease;
+    }
+
+    .dropzone.dragging {
+      border-color: #fff;
+      background: rgba(255, 255, 255, .04);
+    }
+
+    .dropzone.disabled {
+      opacity: .4;
+      pointer-events: none;
+    }
+
+    .dropzone strong {
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .dropzone input {
+      margin-top: 12px;
+      max-width: 100%;
+    }
+
+    .file-list {
+      display: grid;
+      gap: 8px;
+
+      margin-top: 12px;
+    }
+
+    .file-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+
+      padding: 9px;
+
+      background: #111216;
+
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    .file-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+
+      font-size: 12px;
+    }
+
+    .file-actions {
+      display: flex;
+      gap: 5px;
+    }
+
+    .tiny-btn {
+      padding: 5px 7px;
+
+      color: var(--text);
+      background: var(--card);
+
+      border: 1px solid var(--border);
+      border-radius: 6px;
+
+      font-size: 11px;
+    }
+
+    .tiny-btn.danger {
+      color: #fecaca;
+      border-color: #7f1d1d;
+    }
+
+    .status {
+      min-height: 20px;
+      margin-top: 10px;
+
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .badge {
+      display: inline-block;
+
+      padding: 4px 7px;
+
+      background: var(--card);
+
+      border: 1px solid var(--border);
+      border-radius: 999px;
+
+      font-size: 11px;
+    }
+
+    .login-warning {
+      width: min(440px, calc(100% - 30px));
+      margin: 80px auto;
+      padding: 20px;
+
+      background: var(--panel);
+
+      border: 1px solid var(--border);
+      border-radius: 14px;
+
+      text-align: center;
+    }
+
+    @media (max-width: 950px) {
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+
+      .size-grid {
+        grid-template-columns: repeat(4, minmax(70px, 1fr));
+      }
+    }
+
+    @media (max-width: 700px) {
+      main {
+        padding: 12px;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .form-grid,
+      .upload-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .field.full {
+        grid-column: auto;
+      }
+
+      .size-grid {
+        grid-template-columns: repeat(3, minmax(65px, 1fr));
+      }
+    }
+  </style>
+</head>
 
 
-  sizeDescription.textContent =
-    getSizeDescription(
-      type
-    );
+<body>
+
+  <!-- NOT LOGGED IN -->
+
+  <div
+    id="notLoggedIn"
+    class="login-warning"
+    style="display:none"
+  >
+    <h2>HARDSTYLE UNLIMITED</h2>
+
+    <p class="muted">
+      You need to log in before opening the Design & Upload Center.
+    </p>
+
+    <a
+      href="./index.html"
+      class="btn primary"
+    >
+      Back to Login
+    </a>
+  </div>
 
 
-  sizeGrid.innerHTML =
-    sizes
-      .map(
-        size => `
+  <!-- DESIGN APP -->
 
-          <div class="size-box">
+  <div
+    id="designApp"
+    style="display:none"
+  >
 
-            <label>
-              ${esc(size)}
-            </label>
+    <header class="topbar">
+
+      <div>
+        <div class="brand">
+          HARDSTYLE UNLIMITED
+        </div>
+
+        <div
+          class="muted"
+          style="font-size:12px"
+        >
+          Design & Upload Center
+        </div>
+      </div>
+
+
+      <div class="top-actions">
+
+        <button
+          id="newDesignBtn"
+          class="btn"
+          type="button"
+        >
+          + New Design
+        </button>
+
+        <a
+          href="./index.html"
+          class="btn primary"
+        >
+          Dashboard
+        </a>
+
+      </div>
+
+    </header>
+
+
+    <main>
+
+      <div class="workspace">
+
+
+        <!-- LEFT SIDE -->
+
+        <aside>
+
+          <section class="panel">
+
+            <div class="panel-head">
+
+              <div>
+                <h3>DESIGN PROJECTS</h3>
+
+                <div class="sub">
+                  Saved artwork projects
+                </div>
+              </div>
+
+            </div>
+
 
             <input
-              class="sizeQty"
-              data-size="${esc(size)}"
-              type="number"
-              min="0"
-              step="1"
-              value="${
-                currentQuantities[
-                  size
-                ] || 0
-              }"
-            >
-
-          </div>
-
-        `
-      )
-      .join('');
-
-
-  sizeGrid
-    .querySelectorAll(
-      '.sizeQty'
-    )
-    .forEach(
-      input => {
-
-        input.addEventListener(
-          'input',
-          () => {
-
-            currentQuantities[
-              input.dataset.size
-            ] =
-              Math.max(
-                0,
-                Number(
-                  input.value || 0
-                )
-              );
-
-
-            calculateTotal();
-
-          }
-        );
-
-      }
-    );
-
-
-  calculateTotal();
-
-}
-
-
-dType.addEventListener(
-  'change',
-  () => {
-
-    renderSizeGrid({});
-
-  }
-);
-
-
-/* =========================================================
-   LOAD DESIGNS
-========================================================= */
-
-async function loadDesigns() {
-
-  const {
-    data,
-    error
-  } =
-    await supabase
-      .from('designs')
-      .select(`
-        id,
-        job_id,
-        contact_id,
-        title,
-        design_type,
-        notes,
-        specs,
-        created_by,
-        created_at,
-        updated_at,
-
-        contacts (
-          id,
-          name
-        ),
-
-        jobs (
-          id,
-          name
-        )
-      `)
-      .order(
-        'updated_at',
-        {
-          ascending: false
-        }
-      );
-
-
-  if (
-    error
-  ) {
-
-    console.error(
-      'Load designs error:',
-      error
-    );
-
-
-    designProjectList.innerHTML = `
-
-      <div class="muted">
-        ${esc(error.message)}
-      </div>
-
-    `;
-
-
-    return;
-
-  }
-
-
-  designsCache =
-    data ?? [];
-
-
-  renderDesignList(
-    designSearch.value
-  );
-
-}
-
-
-/* =========================================================
-   RENDER DESIGN LIST
-========================================================= */
-
-function renderDesignList(
-  search = ''
-) {
-
-  const query =
-    search
-      .trim()
-      .toLowerCase();
-
-
-  const designs =
-    designsCache.filter(
-      design => {
-
-        if (
-          !query
-        ) {
-          return true;
-        }
-
-
-        return [
-
-          design.title,
-          design.design_type,
-          design.contacts?.name,
-          design.jobs?.name,
-          design.notes
-
-        ].some(
-          value =>
-            String(
-              value ?? ''
-            )
-              .toLowerCase()
-              .includes(
-                query
-              )
-        );
-
-      }
-    );
-
-
-  if (
-    !designs.length
-  ) {
-
-    designProjectList.innerHTML = `
-
-      <div class="muted">
-        No matching designs.
-      </div>
-
-    `;
-
-    return;
-
-  }
-
-
-  designProjectList.innerHTML =
-    designs
-      .map(
-        design => `
-
-          <button
-            class="
-              project-card
-
-              ${
-                Number(
-                  currentDesignId
-                ) ===
-                Number(
-                  design.id
-                )
-                  ? 'active'
-                  : ''
-              }
-            "
-
-            data-design-id="${
-              design.id
-            }"
-
-            type="button"
-          >
-
-            <strong>
-              ${esc(design.title)}
-            </strong>
-
-
-            <div
-              class="muted"
+              id="designSearch"
+              type="search"
+              placeholder="Search projects..."
               style="
-                font-size:11px;
-                margin-top:5px;
+                width:100%;
+                margin-bottom:12px;
+                padding:10px;
+                background:var(--card);
+                color:var(--text);
+                border:1px solid var(--border);
+                border-radius:8px;
               "
             >
 
-              ${
-                esc(
-                  PRODUCT_LABELS[
-                    design.design_type
-                  ] ||
-                  design.design_type
-                )
-              }
+
+            <div
+              id="designProjectList"
+              class="project-list"
+            >
+              <div class="muted">
+                Loading...
+              </div>
+            </div>
+
+          </section>
+
+        </aside>
+
+
+        <!-- RIGHT SIDE -->
+
+        <div>
+
+          <section class="panel">
+
+            <div class="panel-head">
+
+              <div>
+
+                <h2 id="designFormHeading">
+                  NEW DESIGN
+                </h2>
+
+                <div
+                  id="designIdText"
+                  class="sub"
+                >
+                  Create a production project
+                </div>
+
+              </div>
+
+
+              <span
+                id="savedBadge"
+                class="badge"
+                style="display:none"
+              >
+                SAVED
+              </span>
 
             </div>
 
 
-            ${
-              design.jobs?.name
+            <div class="form-grid">
 
-                ? `
 
-                    <div
-                      class="muted"
-                      style="
-                        font-size:11px;
-                        margin-top:3px;
-                      "
-                    >
+              <!-- TITLE -->
 
-                      Job:
-                      ${
-                        esc(
-                          design.jobs.name
-                        )
-                      }
+              <div class="field full">
 
-                    </div>
+                <label>
+                  Design / project name
+                </label>
 
-                  `
+                <input
+                  id="dTitle"
+                  type="text"
+                  placeholder="Example: Aswell LA Takeover Tee"
+                >
 
-                : ''
-            }
+              </div>
 
 
-            ${
-              design.contacts?.name
+              <!-- JOB -->
 
-                ? `
+              <div class="field">
 
-                    <div
-                      class="muted"
-                      style="
-                        font-size:11px;
-                        margin-top:3px;
-                      "
-                    >
+                <label>
+                  Linked job
+                </label>
 
-                      ${
-                        esc(
-                          design.contacts.name
-                        )
-                      }
+                <select id="dJob">
 
-                    </div>
+                  <option value="">
+                    No linked job
+                  </option>
 
-                  `
+                </select>
 
-                : ''
-            }
+              </div>
 
-          </button>
 
-        `
-      )
-      .join('');
+              <!-- CONTACT -->
 
+              <div class="field">
 
-  designProjectList
-    .querySelectorAll(
-      '.project-card'
-    )
-    .forEach(
-      button => {
+                <label>
+                  Customer / fighter
+                </label>
 
-        button.addEventListener(
-          'click',
-          () => {
+                <select id="dContact">
 
-            openDesign(
-              Number(
-                button.dataset
-                  .designId
-              )
-            );
+                  <option value="">
+                    Select contact
+                  </option>
 
-          }
-        );
+                </select>
 
-      }
-    );
+              </div>
 
-}
 
+              <!-- PRODUCT -->
 
-designSearch.addEventListener(
-  'input',
-  () => {
+              <div class="field">
 
-    renderDesignList(
-      designSearch.value
-    );
+                <label>
+                  Product type
+                </label>
 
-  }
-);
+                <select id="dType">
 
+                  <option value="standard_tee">
+                    Standard Tee
+                  </option>
 
-/* =========================================================
-   NEW DESIGN
-========================================================= */
+                  <option value="heavy_weight_tee">
+                    Heavy Weight Tee
+                  </option>
 
-function newDesign() {
+                  <option value="standard_shorts">
+                    Standard Shorts
+                  </option>
 
-  currentDesignId =
-    null;
+                  <option value="gladiator_shorts">
+                    Gladiator Shorts
+                  </option>
 
+                  <option value="spats">
+                    Spats
+                  </option>
 
-  currentQuantities =
-    {};
+                  <option value="rash_guard">
+                    Rash Guard
+                  </option>
 
+                  <option value="special">
+                    Special
+                  </option>
 
-  designFormHeading.textContent =
-    'NEW DESIGN';
+                </select>
 
+              </div>
 
-  designIdText.textContent =
-    'Create a production project';
 
+              <!-- NOTES -->
 
-  savedBadge.style.display =
-    'none';
+              <div class="field full">
 
+                <label>
+                  Design / production notes
+                </label>
 
-  dTitle.value =
-    '';
+                <textarea
+                  id="dNotes"
+                  rows="5"
+                  placeholder="Colors, placement, print notes, sponsor instructions, material details..."
+                ></textarea>
 
+              </div>
 
-  renderJobOptions();
+            </div>
 
 
-  renderContactOptions();
+            <!-- SIZE BREAKDOWN -->
 
+            <div class="size-heading">
 
-  dJob.value =
-    '';
+              <h3 style="margin-bottom:4px">
+                SIZE BREAKDOWN
+              </h3>
 
-
-  dContact.value =
-    '';
-
-
-  dType.value =
-    'standard_tee';
-
-
-  dNotes.value =
-    '';
-
-
-  setStatus(
-    designStatus,
-    ''
-  );
-
-
-  renderSizeGrid({});
-
-
-  disableUploads();
-
-
-  uploadsCache =
-    [];
-
-
-  renderUploads();
-
-
-  renderDesignList(
-    designSearch.value
-  );
-
-}
-
-
-newDesignBtn.addEventListener(
-  'click',
-  newDesign
-);
-
-
-/* =========================================================
-   OPEN DESIGN
-========================================================= */
-
-async function openDesign(
-  designId
-) {
-
-  const design =
-    designsCache.find(
-      item =>
-        Number(item.id) ===
-        Number(designId)
-    );
-
-
-  if (
-    !design
-  ) {
-    return;
-  }
-
-
-  currentDesignId =
-    design.id;
-
-
-  designFormHeading.textContent =
-    design.title;
-
-
-  designIdText.textContent =
-    `Design #${design.id}`;
-
-
-  savedBadge.style.display =
-    'inline-block';
-
-
-  dTitle.value =
-    design.title || '';
-
-
-  renderJobOptions(
-    design.job_id
-  );
-
-
-  renderContactOptions(
-    design.contact_id
-  );
-
-
-  dType.value =
-    design.design_type ||
-    'standard_tee';
-
-
-  dNotes.value =
-    design.notes || '';
-
-
-  const quantities =
-    design.specs
-      ?.quantities ||
-    {};
-
-
-  renderSizeGrid(
-    quantities
-  );
-
-
-  setStatus(
-    designStatus,
-    ''
-  );
-
-
-  enableUploads();
-
-
-  renderDesignList(
-    designSearch.value
-  );
-
-
-  await loadUploads();
-
-}
-
-
-/* =========================================================
-   JOB LINK HANDOFF
-========================================================= */
-
-async function openDesignForRequestedJob() {
-
-  if (
-    !requestedJobId
-  ) {
-    return;
-  }
-
-
-  const job =
-    jobsCache.find(
-      item =>
-        Number(item.id) ===
-        Number(requestedJobId)
-    );
-
-
-  if (
-    !job
-  ) {
-
-    setStatus(
-      designStatus,
-      `Could not find Job #${requestedJobId}.`,
-      true
-    );
-
-    return;
-
-  }
-
-
-  /*
-    Find an existing design linked
-    to this job.
-  */
-
-  const existingDesign =
-    designsCache.find(
-      design =>
-        Number(design.job_id) ===
-        Number(job.id)
-    );
-
-
-  if (
-    existingDesign
-  ) {
-
-    await openDesign(
-      existingDesign.id
-    );
-
-
-    designIdText.textContent =
-      `Design #${existingDesign.id} • Linked to ${job.name}`;
-
-
-    return;
-
-  }
-
-
-  /*
-    No existing design yet.
-
-    Start a new design and prefill
-    the job/contact information.
-  */
-
-  newDesign();
-
-
-  dJob.value =
-    String(job.id);
-
-
-  if (
-    job.contact_id
-  ) {
-
-    dContact.value =
-      String(
-        job.contact_id
-      );
-
-  }
-
-
-  dTitle.value =
-    job.name;
-
-
-  designFormHeading.textContent =
-    'NEW DESIGN';
-
-
-  designIdText.textContent =
-    `Linked to ${job.name}`;
-
-
-  setStatus(
-    designStatus,
-    'This job does not have a design project yet. Fill out the details and click Save Design.'
-  );
-
-}
-
-
-/* =========================================================
-   SAVE DESIGN
-========================================================= */
-
-saveDesignBtn.addEventListener(
-  'click',
-  saveDesign
-);
-
-
-async function saveDesign() {
-
-  if (
-    !currentUser
-  ) {
-    return;
-  }
-
-
-  const title =
-    dTitle.value.trim();
-
-
-  if (
-    !title
-  ) {
-
-    setStatus(
-      designStatus,
-      'Enter a design / project name.',
-      true
-    );
-
-    return;
-
-  }
-
-
-  if (
-    !dContact.value
-  ) {
-
-    setStatus(
-      designStatus,
-      'Select a customer or fighter.',
-      true
-    );
-
-    return;
-
-  }
-
-
-  saveDesignBtn.disabled =
-    true;
-
-
-  saveDesignBtn.textContent =
-    'Saving...';
-
-
-  setStatus(
-    designStatus,
-    'Saving design...'
-  );
-
-
-  const payload = {
-
-    title,
-
-    job_id:
-      dJob.value
-        ? Number(
-            dJob.value
-          )
-        : null,
-
-    contact_id:
-      Number(
-        dContact.value
-      ),
-
-    design_type:
-      dType.value,
-
-    notes:
-      dNotes.value.trim() ||
-      null,
-
-    specs: {
-
-      quantities:
-        currentQuantities,
-
-      total_quantity:
-        Number(
-          totalQuantity.textContent ||
-          0
-        )
-
-    },
-
-    updated_at:
-      new Date()
-        .toISOString()
-
-  };
-
-
-  let result;
-
-
-  if (
-    currentDesignId
-  ) {
-
-    result =
-      await supabase
-        .from('designs')
-        .update(
-          payload
-        )
-        .eq(
-          'id',
-          currentDesignId
-        )
-        .select()
-        .single();
-
-  } else {
-
-    result =
-      await supabase
-        .from('designs')
-        .insert({
-
-          ...payload,
-
-          created_by:
-            currentUser.id
-
-        })
-        .select()
-        .single();
-
-  }
-
-
-  if (
-    result.error
-  ) {
-
-    console.error(
-      'Save design error:',
-      result.error
-    );
-
-
-    setStatus(
-      designStatus,
-      result.error.message,
-      true
-    );
-
-
-    saveDesignBtn.disabled =
-      false;
-
-
-    saveDesignBtn.textContent =
-      'Save Design';
-
-
-    return;
-
-  }
-
-
-  currentDesignId =
-    result.data.id;
-
-
-  setStatus(
-    designStatus,
-    'Design saved.'
-  );
-
-
-  savedBadge.style.display =
-    'inline-block';
-
-
-  designIdText.textContent =
-    `Design #${currentDesignId}`;
-
-
-  enableUploads();
-
-
-  /*
-    Remove ?job= from the URL after
-    the design has been saved.
-
-    This prevents refresh from trying
-    to create another new design.
-  */
-
-  if (
-    requestedJobId
-  ) {
-
-    window.history.replaceState(
-      {},
-      '',
-      './designs.html'
-    );
-
-  }
-
-
-  await loadDesigns();
-
-
-  await loadUploads();
-
-
-  saveDesignBtn.disabled =
-    false;
-
-
-  saveDesignBtn.textContent =
-    'Save Design';
-
-}
-
-
-/* =========================================================
-   UPLOAD ENABLE / DISABLE
-========================================================= */
-
-function disableUploads() {
-
-  designAssetDropzone
-    .classList
-    .add(
-      'disabled'
-    );
-
-
-  sponsorDropzone
-    .classList
-    .add(
-      'disabled'
-    );
-
-
-  designAssetFiles.disabled =
-    true;
-
-
-  sponsorFiles.disabled =
-    true;
-
-
-  uploadNotice.textContent =
-    'Save the design before uploading files.';
-
-}
-
-
-function enableUploads() {
-
-  designAssetDropzone
-    .classList
-    .remove(
-      'disabled'
-    );
-
-
-  sponsorDropzone
-    .classList
-    .remove(
-      'disabled'
-    );
-
-
-  designAssetFiles.disabled =
-    false;
-
-
-  sponsorFiles.disabled =
-    false;
-
-
-  uploadNotice.textContent =
-    `Files are attached to Design #${currentDesignId}.`;
-
-}
-
-
-/* =========================================================
-   FILE INPUTS
-========================================================= */
-
-designAssetFiles.addEventListener(
-  'change',
-  async () => {
-
-    await uploadFiles(
-      designAssetFiles.files,
-      'design_asset'
-    );
-
-
-    designAssetFiles.value =
-      '';
-
-  }
-);
-
-
-sponsorFiles.addEventListener(
-  'change',
-  async () => {
-
-    await uploadFiles(
-      sponsorFiles.files,
-      'sponsor'
-    );
-
-
-    sponsorFiles.value =
-      '';
-
-  }
-);
-
-
-/* =========================================================
-   DRAG + DROP
-========================================================= */
-
-setupDropzone(
-  designAssetDropzone,
-  'design_asset'
-);
-
-
-setupDropzone(
-  sponsorDropzone,
-  'sponsor'
-);
-
-
-function setupDropzone(
-  element,
-  category
-) {
-
-  [
-    'dragenter',
-    'dragover'
-  ].forEach(
-    eventName => {
-
-      element.addEventListener(
-        eventName,
-        event => {
-
-          event.preventDefault();
-
-
-          if (
-            !currentDesignId
-          ) {
-            return;
-          }
-
-
-          element.classList.add(
-            'dragging'
-          );
-
-        }
-      );
-
-    }
-  );
-
-
-  [
-    'dragleave',
-    'drop'
-  ].forEach(
-    eventName => {
-
-      element.addEventListener(
-        eventName,
-        event => {
-
-          event.preventDefault();
-
-
-          element.classList.remove(
-            'dragging'
-          );
-
-        }
-      );
-
-    }
-  );
-
-
-  element.addEventListener(
-    'drop',
-    async event => {
-
-      if (
-        !currentDesignId
-      ) {
-        return;
-      }
-
-
-      await uploadFiles(
-        event.dataTransfer.files,
-        category
-      );
-
-    }
-  );
-
-}
-
-
-/* =========================================================
-   UPLOAD FILES
-========================================================= */
-
-async function uploadFiles(
-  fileList,
-  category
-) {
-
-  if (
-    !currentDesignId ||
-    !currentUser
-  ) {
-
-    return;
-
-  }
-
-
-  const files =
-    Array.from(
-      fileList || []
-    );
-
-
-  if (
-    !files.length
-  ) {
-    return;
-  }
-
-
-  const statusElement =
-    category ===
-      'sponsor'
-      ? sponsorStatus
-      : designAssetStatus;
-
-
-  setStatus(
-    statusElement,
-    `Uploading ${files.length} file${
-      files.length === 1
-        ? ''
-        : 's'
-    }...`
-  );
-
-
-  const currentDesign =
-    designsCache.find(
-      design =>
-        Number(design.id) ===
-        Number(currentDesignId)
-    );
-
-
-  let completed =
-    0;
-
-
-  for (
-    const file
-    of files
-  ) {
-
-    try {
-
-      const cleanName =
-        safeFilename(
-          file.name
-        );
-
-
-      const path = [
-
-        `design-${currentDesignId}`,
-
-        category,
-
-        `${
-          Date.now()
-        }-${
-          Math.random()
-            .toString(36)
-            .slice(2,8)
-        }-${cleanName}`
-
-      ].join('/');
-
-
-      const {
-        error:
-          storageError
-      } =
-        await supabase
-          .storage
-          .from(
-            STORAGE_BUCKET
-          )
-          .upload(
-            path,
-            file,
-            {
-
-              cacheControl:
-                '3600',
-
-              upsert:
-                false,
-
-              contentType:
-                file.type ||
-                undefined
-
-            }
-          );
-
-
-      if (
-        storageError
-      ) {
-
-        throw storageError;
-
-      }
-
-
-      const {
-        error:
-          databaseError
-      } =
-        await supabase
-          .from('uploads')
-          .insert({
-
-            design_id:
-              currentDesignId,
-
-            job_id:
-              currentDesign
-                ?.job_id ||
-              (
-                dJob.value
-                  ? Number(
-                      dJob.value
-                    )
-                  : null
-              ),
-
-            contact_id:
-              currentDesign
-                ?.contact_id ||
-              (
-                dContact.value
-                  ? Number(
-                      dContact.value
-                    )
-                  : null
-              ),
-
-            category,
-
-            file_name:
-              file.name,
-
-            /*
-              Since the bucket is private,
-              this stores the Storage path,
-              not a public URL.
-            */
-
-            file_url:
-              path,
-
-            file_type:
-              file.type ||
-              null,
-
-            uploaded_by:
-              currentUser.id
-
-          });
-
-
-      if (
-        databaseError
-      ) {
-
-        await supabase
-          .storage
-          .from(
-            STORAGE_BUCKET
-          )
-          .remove([
-            path
-          ]);
-
-
-        throw databaseError;
-
-      }
-
-
-      completed++;
-
-
-      setStatus(
-        statusElement,
-        `Uploaded ${completed} of ${files.length}...`
-      );
-
-
-    } catch (
-      error
-    ) {
-
-      console.error(
-        'Upload error:',
-        error
-      );
-
-
-      setStatus(
-        statusElement,
-        error.message ||
-        'Upload failed.',
-        true
-      );
-
-
-      await loadUploads();
-
-
-      return;
-
-    }
-
-  }
-
-
-  setStatus(
-    statusElement,
-    `${completed} file${
-      completed === 1
-        ? ''
-        : 's'
-    } uploaded.`
-  );
-
-
-  await loadUploads();
-
-}
-
-
-/* =========================================================
-   LOAD UPLOAD RECORDS
-========================================================= */
-
-async function loadUploads() {
-
-  if (
-    !currentDesignId
-  ) {
-
-    uploadsCache =
-      [];
-
-
-    renderUploads();
-
-
-    return;
-
-  }
-
-
-  const {
-    data,
-    error
-  } =
-    await supabase
-      .from('uploads')
-      .select(`
-        id,
-        design_id,
-        job_id,
-        contact_id,
-        category,
-        file_name,
-        file_url,
-        file_type,
-        uploaded_by,
-        created_at
-      `)
-      .eq(
-        'design_id',
-        currentDesignId
-      )
-      .order(
-        'created_at',
-        {
-          ascending: false
-        }
-      );
-
-
-  if (
-    error
-  ) {
-
-    console.error(
-      'Load uploads error:',
-      error
-    );
-
-
-    return;
-
-  }
-
-
-  uploadsCache =
-    data ?? [];
-
-
-  renderUploads();
-
-}
-
-
-/* =========================================================
-   RENDER UPLOADS
-========================================================= */
-
-function renderUploads() {
-
-  const assets =
-    uploadsCache.filter(
-      upload =>
-        upload.category ===
-        'design_asset'
-    );
-
-
-  const sponsors =
-    uploadsCache.filter(
-      upload =>
-        upload.category ===
-        'sponsor'
-    );
-
-
-  designAssetList.innerHTML =
-    renderFileRows(
-      assets
-    );
-
-
-  sponsorList.innerHTML =
-    renderFileRows(
-      sponsors
-    );
-
-
-  bindFileButtons();
-
-}
-
-
-function renderFileRows(
-  files
-) {
-
-  if (
-    !files.length
-  ) {
-
-    return `
-
-      <div class="muted">
-        No files uploaded.
-      </div>
-
-    `;
-
-  }
-
-
-  return files
-    .map(
-      file => `
-
-        <div class="file-row">
-
-          <div>
-
-            <div class="file-name">
-
-              ${esc(file.file_name)}
+              <div
+                id="sizeDescription"
+                class="muted"
+                style="font-size:12px"
+              ></div>
 
             </div>
 
 
             <div
-              class="muted"
-              style="
-                font-size:10px;
-                margin-top:3px;
-              "
-            >
+              id="sizeGrid"
+              class="size-grid"
+            ></div>
 
-              ${
-                esc(
-                  file.file_type ||
-                  'File'
-                )
-              }
+
+            <div class="summary-bar">
+
+              <span class="muted">
+                Total Quantity
+              </span>
+
+              <strong id="totalQuantity">
+                0
+              </strong>
 
             </div>
 
-          </div>
+
+            <div
+              id="designStatus"
+              class="status"
+            ></div>
 
 
-          <div class="file-actions">
-
-            <button
-              class="
-                tiny-btn
-                openUpload
+            <div
+              style="
+                display:flex;
+                justify-content:flex-end;
+                margin-top:14px;
               "
-
-              data-upload-id="${file.id}"
-
-              type="button"
             >
-              Open
-            </button>
+
+              <button
+                id="saveDesignBtn"
+                class="btn primary"
+                type="button"
+              >
+                Save Design
+              </button>
+
+            </div>
+
+          </section>
 
 
-            <button
-              class="
-                tiny-btn
-                danger
-                deleteUpload
-              "
+          <!-- FILE UPLOADS -->
 
-              data-upload-id="${file.id}"
+          <section class="panel">
 
-              type="button"
+            <div class="panel-head">
+
+              <div>
+
+                <h2>
+                  FILE UPLOADS
+                </h2>
+
+                <div class="sub">
+                  Original full-resolution files
+                </div>
+
+              </div>
+
+            </div>
+
+
+            <div
+              id="uploadNotice"
+              class="muted"
             >
-              Delete
-            </button>
+              Save the design before uploading files.
+            </div>
 
-          </div>
+
+            <div class="upload-grid">
+
+
+              <!-- DESIGN ASSETS -->
+
+              <div class="upload-card">
+
+                <h3>
+                  DESIGN ASSETS
+                </h3>
+
+                <div class="muted">
+                  Artwork, mockups, logos,
+                  source files and references.
+                </div>
+
+
+                <div
+                  id="designAssetDropzone"
+                  class="dropzone disabled"
+                  style="margin-top:12px"
+                >
+
+                  <strong>
+                    Drop Design Assets Here
+                  </strong>
+
+                  <span class="muted">
+                    or choose files
+                  </span>
+
+                  <input
+                    id="designAssetFiles"
+                    type="file"
+                    multiple
+                  >
+
+                </div>
+
+
+                <div
+                  id="designAssetStatus"
+                  class="status"
+                ></div>
+
+
+                <div
+                  id="designAssetList"
+                  class="file-list"
+                ></div>
+
+              </div>
+
+
+              <!-- SPONSORS -->
+
+              <div class="upload-card">
+
+                <h3>
+                  SPONSORS
+                </h3>
+
+                <div class="muted">
+                  Sponsor logos and
+                  sponsor-provided artwork.
+                </div>
+
+
+                <div
+                  id="sponsorDropzone"
+                  class="dropzone disabled"
+                  style="margin-top:12px"
+                >
+
+                  <strong>
+                    Drop Sponsor Files Here
+                  </strong>
+
+                  <span class="muted">
+                    or choose files
+                  </span>
+
+                  <input
+                    id="sponsorFiles"
+                    type="file"
+                    multiple
+                  >
+
+                </div>
+
+
+                <div
+                  id="sponsorStatus"
+                  class="status"
+                ></div>
+
+
+                <div
+                  id="sponsorList"
+                  class="file-list"
+                ></div>
+
+              </div>
+
+
+            </div>
+
+          </section>
 
         </div>
 
-      `
-    )
-    .join('');
+      </div>
 
-}
+    </main>
 
+  </div>
 
-/* =========================================================
-   FILE BUTTONS
-========================================================= */
 
-function bindFileButtons() {
+  <!-- IMPORTANT:
+       THIS LOADS THE JAVASCRIPT FILE
+       FROM THE JS FOLDER
+  -->
 
-  document
-    .querySelectorAll(
-      '.openUpload'
-    )
-    .forEach(
-      button => {
+  <script
+    type="module"
+    src="./js/designs.js"
+  ></script>
 
-        button.addEventListener(
-          'click',
-          async () => {
+</body>
 
-            await openUpload(
-              Number(
-                button.dataset
-                  .uploadId
-              )
-            );
-
-          }
-        );
-
-      }
-    );
-
-
-  document
-    .querySelectorAll(
-      '.deleteUpload'
-    )
-    .forEach(
-      button => {
-
-        button.addEventListener(
-          'click',
-          async () => {
-
-            await deleteUpload(
-              Number(
-                button.dataset
-                  .uploadId
-              )
-            );
-
-          }
-        );
-
-      }
-    );
-
-}
-
-
-/* =========================================================
-   OPEN PRIVATE FILE
-========================================================= */
-
-async function openUpload(
-  uploadId
-) {
-
-  const upload =
-    uploadsCache.find(
-      item =>
-        Number(item.id) ===
-        Number(uploadId)
-    );
-
-
-  if (
-    !upload
-  ) {
-    return;
-  }
-
-
-  const {
-    data,
-    error
-  } =
-    await supabase
-      .storage
-      .from(
-        STORAGE_BUCKET
-      )
-      .createSignedUrl(
-        upload.file_url,
-        3600
-      );
-
-
-  if (
-    error
-  ) {
-
-    alert(
-      error.message
-    );
-
-
-    return;
-
-  }
-
-
-  if (
-    data?.signedUrl
-  ) {
-
-    window.open(
-      data.signedUrl,
-      '_blank',
-      'noopener,noreferrer'
-    );
-
-  }
-
-}
-
-
-/* =========================================================
-   DELETE UPLOAD
-========================================================= */
-
-async function deleteUpload(
-  uploadId
-) {
-
-  const upload =
-    uploadsCache.find(
-      item =>
-        Number(item.id) ===
-        Number(uploadId)
-    );
-
-
-  if (
-    !upload
-  ) {
-    return;
-  }
-
-
-  const confirmed =
-    confirm(
-      `Delete "${upload.file_name}"?`
-    );
-
-
-  if (
-    !confirmed
-  ) {
-    return;
-  }
-
-
-  const {
-    error:
-      storageError
-  } =
-    await supabase
-      .storage
-      .from(
-        STORAGE_BUCKET
-      )
-      .remove([
-        upload.file_url
-      ]);
-
-
-  if (
-    storageError
-  ) {
-
-    alert(
-      storageError.message
-    );
-
-
-    return;
-
-  }
-
-
-  const {
-    error:
-      databaseError
-  } =
-    await supabase
-      .from('uploads')
-      .delete()
-      .eq(
-        'id',
-        upload.id
-      );
-
-
-  if (
-    databaseError
-  ) {
-
-    alert(
-      databaseError.message
-    );
-
-
-    return;
-
-  }
-
-
-  await loadUploads();
-
-}
-
-
-/* =========================================================
-   START
-========================================================= */
-
-async function start() {
-
-  const authorized =
-    await checkAuth();
-
-
-  if (
-    !authorized
-  ) {
-    return;
-  }
-
-
-  try {
-
-    await loadOptions();
-
-
-    renderSizeGrid({});
-
-
-    disableUploads();
-
-
-    await loadDesigns();
-
-
-    /*
-      If we arrived from a job's
-      Design Work button, open that
-      specific job now.
-    */
-
-    await openDesignForRequestedJob();
-
-
-  } catch (
-    error
-  ) {
-
-    console.error(
-      'Design Center startup error:',
-      error
-    );
-
-
-    setStatus(
-      designStatus,
-      error.message,
-      true
-    );
-
-  }
-
-}
-
-
-start();
+</html>

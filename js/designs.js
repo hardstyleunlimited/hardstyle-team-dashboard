@@ -5,8 +5,7 @@ import { supabase } from './supabase.js';
    CONFIG
 ========================================================= */
 
-const STORAGE_BUCKET =
-  'hardstyle-designs';
+const STORAGE_BUCKET = 'hardstyle-designs';
 
 
 const SHIRT_SIZES = [
@@ -60,27 +59,28 @@ const WAIST_SIZES = [
 
 
 const PRODUCT_LABELS = {
-  standard_tee:
-    'Standard Tee',
-
-  heavy_weight_tee:
-    'Heavy Weight Tee',
-
-  standard_shorts:
-    'Standard Shorts',
-
-  gladiator_shorts:
-    'Gladiator Shorts',
-
-  spats:
-    'Spats',
-
-  rash_guard:
-    'Rash Guard',
-
-  special:
-    'Special'
+  standard_tee: 'Standard Tee',
+  heavy_weight_tee: 'Heavy Weight Tee',
+  standard_shorts: 'Standard Shorts',
+  gladiator_shorts: 'Gladiator Shorts',
+  spats: 'Spats',
+  rash_guard: 'Rash Guard',
+  special: 'Special'
 };
+
+
+/* =========================================================
+   URL JOB HANDOFF
+========================================================= */
+
+const urlParams =
+  new URLSearchParams(
+    window.location.search
+  );
+
+
+const requestedJobId =
+  urlParams.get('job');
 
 
 /* =========================================================
@@ -232,8 +232,11 @@ let currentUser = null;
 let currentDesignId = null;
 
 let designsCache = [];
+
 let contactsCache = [];
+
 let jobsCache = [];
+
 let uploadsCache = [];
 
 let currentQuantities = {};
@@ -244,20 +247,16 @@ let currentQuantities = {};
 ========================================================= */
 
 function esc(value) {
-
-  return String(
-    value ?? ''
-  ).replace(
+  return String(value ?? '').replace(
     /[&<>"']/g,
-    char => ({
+    character => ({
       '&': '&amp;',
       '<': '&lt;',
       '>': '&gt;',
       '"': '&quot;',
       "'": '&#39;'
-    }[char])
+    }[character])
   );
-
 }
 
 
@@ -266,50 +265,38 @@ function setStatus(
   message,
   error = false
 ) {
-
   if (!element) {
     return;
   }
 
-
-  element.textContent =
-    message;
-
+  element.textContent = message;
 
   element.style.color =
     error
       ? '#fca5a5'
       : '';
-
 }
 
 
-function safeFilename(
-  filename
-) {
+function safeFilename(filename) {
+  const original =
+    String(filename || 'file');
 
-  const parts =
-    filename.split('.');
+  const dot =
+    original.lastIndexOf('.');
 
+  let base =
+    dot > 0
+      ? original.slice(0, dot)
+      : original;
 
-  let extension = '';
+  let extension =
+    dot > 0
+      ? original.slice(dot + 1)
+      : '';
 
-  if (parts.length > 1) {
-
-    extension =
-      `.${parts.pop()
-        .toLowerCase()
-        .replace(
-          /[^a-z0-9]/g,
-          ''
-        )}`;
-
-  }
-
-
-  const base =
-    parts.join('.')
-      .trim()
+  base =
+    base
       .replace(
         /[^a-zA-Z0-9-_]+/g,
         '-'
@@ -319,110 +306,80 @@ function safeFilename(
         '-'
       )
       .replace(
-        /^-|-$|/g,
+        /^-+|-+$/g,
         ''
       );
 
+  extension =
+    extension
+      .toLowerCase()
+      .replace(
+        /[^a-z0-9]/g,
+        ''
+      );
 
   return (
     (base || 'file') +
-    extension
+    (
+      extension
+        ? `.${extension}`
+        : ''
+    )
   );
-
 }
 
 
-function getSizesForType(
-  type
-) {
-
+function getSizesForType(type) {
   if (
-    type ===
-      'standard_shorts' ||
-
-    type ===
-      'gladiator_shorts' ||
-
-    type ===
-      'spats'
+    type === 'standard_shorts' ||
+    type === 'gladiator_shorts' ||
+    type === 'spats'
   ) {
-
     return WAIST_SIZES;
-
   }
-
 
   if (
-    type ===
-    'rash_guard'
+    type === 'rash_guard'
   ) {
-
     return RASH_GUARD_SIZES;
-
   }
-
 
   return SHIRT_SIZES;
-
 }
 
 
-function getSizeDescription(
-  type
-) {
-
+function getSizeDescription(type) {
   if (
-    type ===
-      'standard_shorts' ||
-
-    type ===
-      'gladiator_shorts' ||
-
-    type ===
-      'spats'
+    type === 'standard_shorts' ||
+    type === 'gladiator_shorts' ||
+    type === 'spats'
   ) {
-
     return 'Waist sizes';
-
   }
-
 
   if (
-    type ===
-    'rash_guard'
+    type === 'rash_guard'
   ) {
-
     return 'Youth and adult rash guard sizes';
-
   }
-
 
   return 'Youth and adult garment sizes';
-
 }
 
 
 function calculateTotal() {
-
   const total =
     Object.values(
       currentQuantities
     ).reduce(
-      (
-        sum,
-        quantity
-      ) =>
+      (sum, value) =>
         sum +
-        Number(
-          quantity || 0
-        ),
+        Number(value || 0),
       0
     );
 
-
   totalQuantity.textContent =
     String(total);
-
 }
 
 
@@ -431,7 +388,6 @@ function calculateTotal() {
 ========================================================= */
 
 async function checkAuth() {
-
   const {
     data: { session },
     error
@@ -441,19 +397,14 @@ async function checkAuth() {
 
 
   if (error) {
-
     console.error(
       'Design auth error:',
       error
     );
-
   }
 
 
-  if (
-    !session?.user
-  ) {
-
+  if (!session?.user) {
     designApp.style.display =
       'none';
 
@@ -461,13 +412,11 @@ async function checkAuth() {
       'block';
 
     return false;
-
   }
 
 
   currentUser =
     session.user;
-
 
   notLoggedIn.style.display =
     'none';
@@ -475,18 +424,15 @@ async function checkAuth() {
   designApp.style.display =
     'block';
 
-
   return true;
-
 }
 
 
 /* =========================================================
-   LOAD CONTACTS + JOBS
+   CONTACTS + JOBS
 ========================================================= */
 
 async function loadOptions() {
-
   const [
     contactsResult,
     jobsResult
@@ -507,7 +453,6 @@ async function loadOptions() {
           }
         ),
 
-
       supabase
         .from('jobs')
         .select(`
@@ -517,10 +462,6 @@ async function loadOptions() {
           status,
           due_date
         `)
-        .neq(
-          'status',
-          'complete'
-        )
         .order(
           'due_date',
           {
@@ -532,49 +473,32 @@ async function loadOptions() {
     ]);
 
 
-  if (
-    contactsResult.error
-  ) {
-
+  if (contactsResult.error) {
     throw contactsResult.error;
-
   }
 
 
-  if (
-    jobsResult.error
-  ) {
-
+  if (jobsResult.error) {
     throw jobsResult.error;
-
   }
 
 
   contactsCache =
-    contactsResult.data ??
-    [];
-
+    contactsResult.data ?? [];
 
   jobsCache =
-    jobsResult.data ??
-    [];
+    jobsResult.data ?? [];
 
 
   renderContactOptions();
 
   renderJobOptions();
-
 }
 
-
-/* =========================================================
-   CONTACT OPTIONS
-========================================================= */
 
 function renderContactOptions(
   selectedId = null
 ) {
-
   dContact.innerHTML = `
 
     <option value="">
@@ -590,12 +514,8 @@ function renderContactOptions(
               value="${contact.id}"
 
               ${
-                Number(
-                  selectedId
-                ) ===
-                Number(
-                  contact.id
-                )
+                Number(selectedId) ===
+                Number(contact.id)
                   ? 'selected'
                   : ''
               }
@@ -604,9 +524,7 @@ function renderContactOptions(
               ${esc(contact.name)}
 
               •
-              ${esc(
-                contact.contact_type
-              )}
+              ${esc(contact.contact_type)}
 
             </option>
 
@@ -616,18 +534,12 @@ function renderContactOptions(
     }
 
   `;
-
 }
 
-
-/* =========================================================
-   JOB OPTIONS
-========================================================= */
 
 function renderJobOptions(
   selectedId = null
 ) {
-
   dJob.innerHTML = `
 
     <option value="">
@@ -643,12 +555,8 @@ function renderJobOptions(
               value="${job.id}"
 
               ${
-                Number(
-                  selectedId
-                ) ===
-                Number(
-                  job.id
-                )
+                Number(selectedId) ===
+                Number(job.id)
                   ? 'selected'
                   : ''
               }
@@ -664,18 +572,16 @@ function renderJobOptions(
     }
 
   `;
-
 }
 
 
 /* =========================================================
-   JOB AUTO-SELECT CONTACT
+   JOB AUTO-FILLS CONTACT
 ========================================================= */
 
 dJob.addEventListener(
   'change',
   () => {
-
     if (!dJob.value) {
       return;
     }
@@ -689,17 +595,10 @@ dJob.addEventListener(
       );
 
 
-    if (
-      job?.contact_id
-    ) {
-
+    if (job?.contact_id) {
       dContact.value =
-        String(
-          job.contact_id
-        );
-
+        String(job.contact_id);
     }
-
   }
 );
 
@@ -711,15 +610,12 @@ dJob.addEventListener(
 function renderSizeGrid(
   quantities = null
 ) {
-
   const type =
     dType.value;
 
 
   const sizes =
-    getSizesForType(
-      type
-    );
+    getSizesForType(type);
 
 
   const previous =
@@ -731,22 +627,16 @@ function renderSizeGrid(
   currentQuantities = {};
 
 
-  sizes.forEach(
-    size => {
-
-      currentQuantities[size] =
-        Number(
-          previous[size] || 0
-        );
-
-    }
-  );
+  for (const size of sizes) {
+    currentQuantities[size] =
+      Number(
+        previous[size] || 0
+      );
+  }
 
 
   sizeDescription.textContent =
-    getSizeDescription(
-      type
-    );
+    getSizeDescription(type);
 
 
   sizeGrid.innerHTML =
@@ -767,9 +657,7 @@ function renderSizeGrid(
               min="0"
               step="1"
               value="${
-                currentQuantities[
-                  size
-                ] || 0
+                currentQuantities[size] || 0
               }"
             >
 
@@ -786,11 +674,9 @@ function renderSizeGrid(
     )
     .forEach(
       input => {
-
         input.addEventListener(
           'input',
           () => {
-
             currentQuantities[
               input.dataset.size
             ] =
@@ -801,43 +687,30 @@ function renderSizeGrid(
                 )
               );
 
-
             calculateTotal();
-
           }
         );
-
       }
     );
 
 
   calculateTotal();
-
 }
 
 
 dType.addEventListener(
   'change',
   () => {
-
-    /*
-      Product types have different
-      size systems, so start a clean
-      breakdown when the product changes.
-    */
-
     renderSizeGrid({});
-
   }
 );
 
 
 /* =========================================================
-   LOAD DESIGNS
+   DESIGNS
 ========================================================= */
 
 async function loadDesigns() {
-
   const {
     data,
     error
@@ -875,12 +748,10 @@ async function loadDesigns() {
 
 
   if (error) {
-
     console.error(
       'Load designs error:',
       error
     );
-
 
     designProjectList.innerHTML = `
 
@@ -890,9 +761,7 @@ async function loadDesigns() {
 
     `;
 
-
     return;
-
   }
 
 
@@ -903,18 +772,16 @@ async function loadDesigns() {
   renderDesignList(
     designSearch.value
   );
-
 }
 
 
 /* =========================================================
-   RENDER DESIGN PROJECTS
+   DESIGN LIST
 ========================================================= */
 
 function renderDesignList(
   search = ''
 ) {
-
   const query =
     search
       .trim()
@@ -924,41 +791,27 @@ function renderDesignList(
   const designs =
     designsCache.filter(
       design => {
-
         if (!query) {
           return true;
         }
 
-
         return [
-
           design.title,
-
           design.design_type,
-
           design.contacts?.name,
-
           design.jobs?.name,
-
           design.notes
-
         ].some(
           value =>
-            String(
-              value ?? ''
-            )
+            String(value ?? '')
               .toLowerCase()
               .includes(query)
         );
-
       }
     );
 
 
-  if (
-    !designs.length
-  ) {
-
+  if (!designs.length) {
     designProjectList.innerHTML = `
 
       <div class="muted">
@@ -968,7 +821,6 @@ function renderDesignList(
     `;
 
     return;
-
   }
 
 
@@ -980,22 +832,16 @@ function renderDesignList(
           <button
             class="
               project-card
+
               ${
-                Number(
-                  currentDesignId
-                ) ===
-                Number(
-                  design.id
-                )
+                Number(currentDesignId) ===
+                Number(design.id)
                   ? 'active'
                   : ''
               }
             "
 
-            data-design-id="${
-              design.id
-            }"
-
+            data-design-id="${design.id}"
             type="button"
           >
 
@@ -1023,22 +869,35 @@ function renderDesignList(
             </div>
 
             ${
+              design.jobs?.name
+                ? `
+                  <div
+                    class="muted"
+                    style="
+                      font-size:11px;
+                      margin-top:3px;
+                    "
+                  >
+                    Job:
+                    ${esc(design.jobs.name)}
+                  </div>
+                `
+                : ''
+            }
+
+            ${
               design.contacts?.name
                 ? `
-                    <div
-                      class="muted"
-                      style="
-                        font-size:11px;
-                        margin-top:3px;
-                      "
-                    >
-                      ${
-                        esc(
-                          design.contacts.name
-                        )
-                      }
-                    </div>
-                  `
+                  <div
+                    class="muted"
+                    style="
+                      font-size:11px;
+                      margin-top:3px;
+                    "
+                  >
+                    ${esc(design.contacts.name)}
+                  </div>
+                `
                 : ''
             }
 
@@ -1055,35 +914,27 @@ function renderDesignList(
     )
     .forEach(
       button => {
-
         button.addEventListener(
           'click',
           () => {
-
             openDesign(
               Number(
-                button.dataset
-                  .designId
+                button.dataset.designId
               )
             );
-
           }
         );
-
       }
     );
-
 }
 
 
 designSearch.addEventListener(
   'input',
   () => {
-
     renderDesignList(
       designSearch.value
     );
-
   }
 );
 
@@ -1093,45 +944,35 @@ designSearch.addEventListener(
 ========================================================= */
 
 function newDesign() {
+  currentDesignId = null;
 
-  currentDesignId =
-    null;
-
-
-  currentQuantities =
-    {};
+  currentQuantities = {};
 
 
   designFormHeading.textContent =
     'NEW DESIGN';
 
-
   designIdText.textContent =
     'Create a production project';
-
 
   savedBadge.style.display =
     'none';
 
 
-  dTitle.value =
-    '';
+  dTitle.value = '';
 
+  renderJobOptions();
 
-  dJob.value =
-    '';
+  renderContactOptions();
 
+  dJob.value = '';
 
-  dContact.value =
-    '';
-
+  dContact.value = '';
 
   dType.value =
     'standard_tee';
 
-
-  dNotes.value =
-    '';
+  dNotes.value = '';
 
 
   setStatus(
@@ -1146,9 +987,7 @@ function newDesign() {
   disableUploads();
 
 
-  uploadsCache =
-    [];
-
+  uploadsCache = [];
 
   renderUploads();
 
@@ -1156,7 +995,6 @@ function newDesign() {
   renderDesignList(
     designSearch.value
   );
-
 }
 
 
@@ -1173,7 +1011,6 @@ newDesignBtn.addEventListener(
 async function openDesign(
   designId
 ) {
-
   const design =
     designsCache.find(
       item =>
@@ -1194,10 +1031,8 @@ async function openDesign(
   designFormHeading.textContent =
     design.title;
 
-
   designIdText.textContent =
     `Design #${design.id}`;
-
 
   savedBadge.style.display =
     'inline-block';
@@ -1227,8 +1062,7 @@ async function openDesign(
 
 
   const quantities =
-    design.specs
-      ?.quantities ||
+    design.specs?.quantities ||
     {};
 
 
@@ -1252,7 +1086,87 @@ async function openDesign(
 
 
   await loadUploads();
+}
 
+
+/* =========================================================
+   JOB -> DESIGN HANDOFF
+========================================================= */
+
+async function openDesignForRequestedJob() {
+  if (!requestedJobId) {
+    return;
+  }
+
+
+  const job =
+    jobsCache.find(
+      item =>
+        Number(item.id) ===
+        Number(requestedJobId)
+    );
+
+
+  if (!job) {
+    setStatus(
+      designStatus,
+      `Could not find Job #${requestedJobId}.`,
+      true
+    );
+
+    return;
+  }
+
+
+  const existingDesign =
+    designsCache.find(
+      design =>
+        Number(design.job_id) ===
+        Number(job.id)
+    );
+
+
+  if (existingDesign) {
+    await openDesign(
+      existingDesign.id
+    );
+
+    designIdText.textContent =
+      `Design #${existingDesign.id} • Linked to ${job.name}`;
+
+    return;
+  }
+
+
+  newDesign();
+
+
+  dJob.value =
+    String(job.id);
+
+
+  if (job.contact_id) {
+    dContact.value =
+      String(job.contact_id);
+  }
+
+
+  dTitle.value =
+    job.name;
+
+
+  designFormHeading.textContent =
+    'NEW DESIGN';
+
+
+  designIdText.textContent =
+    `Linked to ${job.name}`;
+
+
+  setStatus(
+    designStatus,
+    'This job does not have a design project yet. Fill out the details and click Save Design.'
+  );
 }
 
 
@@ -1267,7 +1181,6 @@ saveDesignBtn.addEventListener(
 
 
 async function saveDesign() {
-
   if (!currentUser) {
     return;
   }
@@ -1278,7 +1191,6 @@ async function saveDesign() {
 
 
   if (!title) {
-
     setStatus(
       designStatus,
       'Enter a design / project name.',
@@ -1286,12 +1198,10 @@ async function saveDesign() {
     );
 
     return;
-
   }
 
 
   if (!dContact.value) {
-
     setStatus(
       designStatus,
       'Select a customer or fighter.',
@@ -1299,13 +1209,11 @@ async function saveDesign() {
     );
 
     return;
-
   }
 
 
   saveDesignBtn.disabled =
     true;
-
 
   saveDesignBtn.textContent =
     'Saving...';
@@ -1318,20 +1226,15 @@ async function saveDesign() {
 
 
   const payload = {
-
     title,
 
     job_id:
       dJob.value
-        ? Number(
-            dJob.value
-          )
+        ? Number(dJob.value)
         : null,
 
     contact_id:
-      Number(
-        dContact.value
-      ),
+      Number(dContact.value),
 
     design_type:
       dType.value,
@@ -1346,15 +1249,12 @@ async function saveDesign() {
 
       total_quantity:
         Number(
-          totalQuantity.textContent ||
-          0
+          totalQuantity.textContent || 0
         )
     },
 
     updated_at:
-      new Date()
-        .toISOString()
-
+      new Date().toISOString()
   };
 
 
@@ -1362,39 +1262,31 @@ async function saveDesign() {
 
 
   if (currentDesignId) {
-
     result =
       await supabase
         .from('designs')
-        .update(
-          payload
-        )
+        .update(payload)
         .eq(
           'id',
           currentDesignId
         )
         .select()
         .single();
-
   } else {
-
     result =
       await supabase
         .from('designs')
         .insert({
           ...payload,
-
           created_by:
             currentUser.id
         })
         .select()
         .single();
-
   }
 
 
   if (result.error) {
-
     console.error(
       'Save design error:',
       result.error
@@ -1411,24 +1303,15 @@ async function saveDesign() {
     saveDesignBtn.disabled =
       false;
 
-
     saveDesignBtn.textContent =
       'Save Design';
 
-
     return;
-
   }
 
 
   currentDesignId =
     result.data.id;
-
-
-  setStatus(
-    designStatus,
-    'Design saved.'
-  );
 
 
   savedBadge.style.display =
@@ -1439,11 +1322,25 @@ async function saveDesign() {
     `Design #${currentDesignId}`;
 
 
+  setStatus(
+    designStatus,
+    'Design saved.'
+  );
+
+
   enableUploads();
 
 
-  await loadDesigns();
+  if (requestedJobId) {
+    window.history.replaceState(
+      {},
+      '',
+      './designs.html'
+    );
+  }
 
+
+  await loadDesigns();
 
   await loadUploads();
 
@@ -1451,10 +1348,8 @@ async function saveDesign() {
   saveDesignBtn.disabled =
     false;
 
-
   saveDesignBtn.textContent =
     'Save Design';
-
 }
 
 
@@ -1463,62 +1358,42 @@ async function saveDesign() {
 ========================================================= */
 
 function disableUploads() {
-
   designAssetDropzone
     .classList
-    .add(
-      'disabled'
-    );
-
+    .add('disabled');
 
   sponsorDropzone
     .classList
-    .add(
-      'disabled'
-    );
-
+    .add('disabled');
 
   designAssetFiles.disabled =
     true;
 
-
   sponsorFiles.disabled =
     true;
 
-
   uploadNotice.textContent =
     'Save the design before uploading files.';
-
 }
 
 
 function enableUploads() {
-
   designAssetDropzone
     .classList
-    .remove(
-      'disabled'
-    );
-
+    .remove('disabled');
 
   sponsorDropzone
     .classList
-    .remove(
-      'disabled'
-    );
-
+    .remove('disabled');
 
   designAssetFiles.disabled =
     false;
 
-
   sponsorFiles.disabled =
     false;
 
-
   uploadNotice.textContent =
     `Files are attached to Design #${currentDesignId}.`;
-
 }
 
 
@@ -1529,16 +1404,12 @@ function enableUploads() {
 designAssetFiles.addEventListener(
   'change',
   async () => {
-
     await uploadFiles(
       designAssetFiles.files,
       'design_asset'
     );
 
-
-    designAssetFiles.value =
-      '';
-
+    designAssetFiles.value = '';
   }
 );
 
@@ -1546,22 +1417,18 @@ designAssetFiles.addEventListener(
 sponsorFiles.addEventListener(
   'change',
   async () => {
-
     await uploadFiles(
       sponsorFiles.files,
       'sponsor'
     );
 
-
-    sponsorFiles.value =
-      '';
-
+    sponsorFiles.value = '';
   }
 );
 
 
 /* =========================================================
-   DRAG + DROP
+   DROP ZONES
 ========================================================= */
 
 setupDropzone(
@@ -1580,34 +1447,25 @@ function setupDropzone(
   element,
   category
 ) {
-
   [
     'dragenter',
     'dragover'
   ].forEach(
     eventName => {
-
       element.addEventListener(
         eventName,
         event => {
-
           event.preventDefault();
 
-
-          if (
-            !currentDesignId
-          ) {
+          if (!currentDesignId) {
             return;
           }
-
 
           element.classList.add(
             'dragging'
           );
-
         }
       );
-
     }
   );
 
@@ -1617,21 +1475,16 @@ function setupDropzone(
     'drop'
   ].forEach(
     eventName => {
-
       element.addEventListener(
         eventName,
         event => {
-
           event.preventDefault();
-
 
           element.classList.remove(
             'dragging'
           );
-
         }
       );
-
     }
   );
 
@@ -1639,22 +1492,16 @@ function setupDropzone(
   element.addEventListener(
     'drop',
     async event => {
-
-      if (
-        !currentDesignId
-      ) {
+      if (!currentDesignId) {
         return;
       }
-
 
       await uploadFiles(
         event.dataTransfer.files,
         category
       );
-
     }
   );
-
 }
 
 
@@ -1666,14 +1513,11 @@ async function uploadFiles(
   fileList,
   category
 ) {
-
   if (
     !currentDesignId ||
     !currentUser
   ) {
-
     return;
-
   }
 
 
@@ -1689,8 +1533,7 @@ async function uploadFiles(
 
 
   const statusElement =
-    category ===
-      'sponsor'
+    category === 'sponsor'
       ? sponsorStatus
       : designAssetStatus;
 
@@ -1705,7 +1548,7 @@ async function uploadFiles(
   );
 
 
-  const currentDesign =
+  const selectedDesign =
     designsCache.find(
       design =>
         Number(design.id) ===
@@ -1713,44 +1556,26 @@ async function uploadFiles(
     );
 
 
-  let completed =
-    0;
+  let completed = 0;
 
 
-  for (
-    const file
-    of files
-  ) {
-
+  for (const file of files) {
     try {
-
       const cleanName =
-        safeFilename(
-          file.name
-        );
+        safeFilename(file.name);
 
 
       const path = [
-
         `design-${currentDesignId}`,
-
         category,
-
         `${Date.now()}-${Math.random()
           .toString(36)
-          .slice(2,8)}-${cleanName}`
-
+          .slice(2, 8)}-${cleanName}`
       ].join('/');
 
 
-      /*
-        Upload original browser File object.
-        No resizing or compression.
-      */
-
       const {
-        error:
-          storageError
+        error: storageError
       } =
         await supabase
           .storage
@@ -1761,12 +1586,8 @@ async function uploadFiles(
             path,
             file,
             {
-              cacheControl:
-                '3600',
-
-              upsert:
-                false,
-
+              cacheControl: '3600',
+              upsert: false,
               contentType:
                 file.type ||
                 undefined
@@ -1780,35 +1601,27 @@ async function uploadFiles(
 
 
       const {
-        error:
-          databaseError
+        error: databaseError
       } =
         await supabase
           .from('uploads')
           .insert({
-
             design_id:
               currentDesignId,
 
             job_id:
-              currentDesign
-                ?.job_id ||
+              selectedDesign?.job_id ||
               (
                 dJob.value
-                  ? Number(
-                      dJob.value
-                    )
+                  ? Number(dJob.value)
                   : null
               ),
 
             contact_id:
-              currentDesign
-                ?.contact_id ||
+              selectedDesign?.contact_id ||
               (
                 dContact.value
-                  ? Number(
-                      dContact.value
-                    )
+                  ? Number(dContact.value)
                   : null
               ),
 
@@ -1817,10 +1630,6 @@ async function uploadFiles(
             file_name:
               file.name,
 
-            /*
-              file_url stores the
-              private Storage path.
-            */
             file_url:
               path,
 
@@ -1830,17 +1639,10 @@ async function uploadFiles(
 
             uploaded_by:
               currentUser.id
-
           });
 
 
       if (databaseError) {
-
-        /*
-          Avoid orphaning a Storage file
-          if the database insert fails.
-        */
-
         await supabase
           .storage
           .from(
@@ -1850,9 +1652,7 @@ async function uploadFiles(
             path
           ]);
 
-
         throw databaseError;
-
       }
 
 
@@ -1864,9 +1664,7 @@ async function uploadFiles(
         `Uploaded ${completed} of ${files.length}...`
       );
 
-
     } catch (error) {
-
       console.error(
         'Upload error:',
         error
@@ -1884,9 +1682,7 @@ async function uploadFiles(
       await loadUploads();
 
       return;
-
     }
-
   }
 
 
@@ -1901,25 +1697,20 @@ async function uploadFiles(
 
 
   await loadUploads();
-
 }
 
 
 /* =========================================================
-   LOAD UPLOAD RECORDS
+   LOAD UPLOADS
 ========================================================= */
 
 async function loadUploads() {
-
   if (!currentDesignId) {
-
-    uploadsCache =
-      [];
+    uploadsCache = [];
 
     renderUploads();
 
     return;
-
   }
 
 
@@ -1954,14 +1745,12 @@ async function loadUploads() {
 
 
   if (error) {
-
     console.error(
       'Load uploads error:',
       error
     );
 
     return;
-
   }
 
 
@@ -1970,16 +1759,14 @@ async function loadUploads() {
 
 
   renderUploads();
-
 }
 
 
 /* =========================================================
-   RENDER UPLOAD LISTS
+   RENDER UPLOADS
 ========================================================= */
 
 function renderUploads() {
-
   const assets =
     uploadsCache.filter(
       upload =>
@@ -1997,28 +1784,19 @@ function renderUploads() {
 
 
   designAssetList.innerHTML =
-    renderFileRows(
-      assets
-    );
+    renderFileRows(assets);
 
 
   sponsorList.innerHTML =
-    renderFileRows(
-      sponsors
-    );
+    renderFileRows(sponsors);
 
 
   bindFileButtons();
-
 }
 
 
-function renderFileRows(
-  files
-) {
-
+function renderFileRows(files) {
   if (!files.length) {
-
     return `
 
       <div class="muted">
@@ -2026,7 +1804,6 @@ function renderFileRows(
       </div>
 
     `;
-
   }
 
 
@@ -2093,37 +1870,30 @@ function renderFileRows(
       `
     )
     .join('');
-
 }
 
 
 /* =========================================================
-   FILE BUTTONS
+   FILE BUTTON EVENTS
 ========================================================= */
 
 function bindFileButtons() {
-
   document
     .querySelectorAll(
       '.openUpload'
     )
     .forEach(
       button => {
-
         button.addEventListener(
           'click',
           async () => {
-
             await openUpload(
               Number(
-                button.dataset
-                  .uploadId
+                button.dataset.uploadId
               )
             );
-
           }
         );
-
       }
     );
 
@@ -2134,35 +1904,28 @@ function bindFileButtons() {
     )
     .forEach(
       button => {
-
         button.addEventListener(
           'click',
           async () => {
-
             await deleteUpload(
               Number(
-                button.dataset
-                  .uploadId
+                button.dataset.uploadId
               )
             );
-
           }
         );
-
       }
     );
-
 }
 
 
 /* =========================================================
-   OPEN PRIVATE FILE
+   OPEN FILE
 ========================================================= */
 
 async function openUpload(
   uploadId
 ) {
-
   const upload =
     uploadsCache.find(
       item =>
@@ -2192,39 +1955,31 @@ async function openUpload(
 
 
   if (error) {
-
     alert(
       error.message
     );
 
     return;
-
   }
 
 
-  if (
-    data?.signedUrl
-  ) {
-
+  if (data?.signedUrl) {
     window.open(
       data.signedUrl,
       '_blank',
       'noopener,noreferrer'
     );
-
   }
-
 }
 
 
 /* =========================================================
-   DELETE UPLOAD
+   DELETE FILE
 ========================================================= */
 
 async function deleteUpload(
   uploadId
 ) {
-
   const upload =
     uploadsCache.find(
       item =>
@@ -2250,8 +2005,7 @@ async function deleteUpload(
 
 
   const {
-    error:
-      storageError
+    error: storageError
   } =
     await supabase
       .storage
@@ -2264,19 +2018,16 @@ async function deleteUpload(
 
 
   if (storageError) {
-
     alert(
       storageError.message
     );
 
     return;
-
   }
 
 
   const {
-    error:
-      databaseError
+    error: databaseError
   } =
     await supabase
       .from('uploads')
@@ -2288,18 +2039,15 @@ async function deleteUpload(
 
 
   if (databaseError) {
-
     alert(
       databaseError.message
     );
 
     return;
-
   }
 
 
   await loadUploads();
-
 }
 
 
@@ -2308,7 +2056,6 @@ async function deleteUpload(
 ========================================================= */
 
 async function start() {
-
   const authorized =
     await checkAuth();
 
@@ -2319,7 +2066,6 @@ async function start() {
 
 
   try {
-
     await loadOptions();
 
     renderSizeGrid({});
@@ -2328,9 +2074,9 @@ async function start() {
 
     await loadDesigns();
 
+    await openDesignForRequestedJob();
 
   } catch (error) {
-
     console.error(
       'Design Center startup error:',
       error
@@ -2342,9 +2088,7 @@ async function start() {
       error.message,
       true
     );
-
   }
-
 }
 
 
