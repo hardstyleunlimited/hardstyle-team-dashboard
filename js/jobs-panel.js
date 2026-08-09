@@ -92,21 +92,8 @@ function getOwnerName(ownerId) {
 }
 
 
-function statusLabel(status) {
-  const labels = {
-    paid_in_work: 'Paid & In Work',
-    need_design: 'Need Design',
-    leads: 'Leads',
-    events: 'Events',
-    complete: 'Complete'
-  };
-
-  return labels[status] || status;
-}
-
-
 /* =========================================================
-   SORT
+   SORT JOBS
 ========================================================= */
 
 function sortJobs(jobs) {
@@ -120,7 +107,6 @@ function sortJobs(jobs) {
         Number(b.importance ?? 3);
 
 
-      // Importance 5 -> 1
       if (
         importanceA !==
         importanceB
@@ -132,7 +118,6 @@ function sortJobs(jobs) {
       }
 
 
-      // Earliest due date
       if (
         a.due_date &&
         b.due_date
@@ -271,6 +256,19 @@ function injectJobsStyles() {
     }
 
 
+    .job-design-link {
+      display: inline-block;
+
+      margin-top: 10px;
+
+      padding: 6px 9px;
+
+      font-size: 11px;
+
+      text-decoration: none;
+    }
+
+
     #editJobDialog {
       width:
         min(680px, 94vw);
@@ -337,6 +335,7 @@ function createEditDialog() {
       <div class="dialog-head">
 
         <div>
+
           <h3>
             Edit Job
           </h3>
@@ -349,6 +348,7 @@ function createEditDialog() {
               margin-top:4px;
             "
           ></div>
+
         </div>
 
 
@@ -366,8 +366,6 @@ function createEditDialog() {
       <div class="form-grid">
 
 
-        <!-- JOB NAME -->
-
         <div class="field full">
 
           <label>
@@ -381,8 +379,6 @@ function createEditDialog() {
 
         </div>
 
-
-        <!-- CONTACT SEARCH -->
 
         <div class="field">
 
@@ -407,8 +403,6 @@ function createEditDialog() {
         </div>
 
 
-        <!-- OWNER -->
-
         <div class="field">
 
           <label>
@@ -421,8 +415,6 @@ function createEditDialog() {
 
         </div>
 
-
-        <!-- STATUS -->
 
         <div class="field">
 
@@ -469,8 +461,6 @@ function createEditDialog() {
         </div>
 
 
-        <!-- IMPORTANCE -->
-
         <div class="field">
 
           <label>
@@ -506,8 +496,6 @@ function createEditDialog() {
         </div>
 
 
-        <!-- DUE DATE -->
-
         <div class="field">
 
           <label>
@@ -521,8 +509,6 @@ function createEditDialog() {
 
         </div>
 
-
-        <!-- CALENDAR -->
 
         <div class="field">
 
@@ -555,8 +541,6 @@ function createEditDialog() {
         </div>
 
 
-        <!-- NOTES -->
-
         <div class="field full">
 
           <label>
@@ -570,8 +554,6 @@ function createEditDialog() {
 
         </div>
 
-
-        <!-- STATUS MESSAGE -->
 
         <div
           id="editJobMessage"
@@ -1309,6 +1291,28 @@ function jobCard(job) {
           : ''
       }
 
+
+      <div
+        style="
+          margin-top:10px;
+          padding-top:8px;
+          border-top:
+            1px solid var(--border);
+        "
+      >
+
+        <a
+          href="./designs.html?job=${job.id}"
+          class="
+            btn
+            job-design-link
+          "
+        >
+          Design Work →
+        </a>
+
+      </div>
+
     </div>
 
   `;
@@ -1380,7 +1384,7 @@ function attachCardEvents() {
       card => {
 
 
-        /* CLICK TO EDIT */
+        /* CLICK CARD TO EDIT */
 
         card.addEventListener(
           'click',
@@ -1399,6 +1403,27 @@ function attachCardEvents() {
 
           }
         );
+
+
+        /* DESIGN WORK BUTTON */
+
+        card
+          .querySelector(
+            '.job-design-link'
+          )
+          ?.addEventListener(
+            'click',
+            event => {
+
+              /*
+                Prevent the job card's
+                edit dialog from opening.
+              */
+
+              event.stopPropagation();
+
+            }
+          );
 
 
         /* DRAG START */
@@ -1620,11 +1645,6 @@ async function moveJobToStatus(
     return;
   }
 
-
-  /*
-    Optimistic UI:
-    immediately move the card visually.
-  */
 
   job.status =
     newStatus;
