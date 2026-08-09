@@ -292,7 +292,27 @@ dialog::backdrop{background:rgba(0,0,0,.65)}
     <div class="modal-head"><h3 style="margin:0">Add Job</h3><button class="btn closeDialog">Close</button></div>
     <div class="modal-grid">
       <div class="field full"><label>Job name</label><input id="jName"></div>
-      <div class="field"><label>Customer / person</label><select id="jContact"><option value="">Select contact</option></select></div>
+      <div class="field">
+
+  <label for="jContactSearch">
+    Customer / person
+  </label>
+
+  <input
+    id="jContactSearch"
+    type="search"
+    placeholder="Search contacts..."
+    autocomplete="off"
+    style="margin-bottom:6px"
+  >
+
+  <select id="jContact">
+    <option value="">
+      Select contact
+    </option>
+  </select>
+
+</div>
       <div class="field"><label>Owner</label><select id="jOwner"><option value="">Select owner</option></select></div>
       <div class="field"><label>Status</label><select id="jStatus"><option value="paid_in_work">Paid & In Work</option><option value="need_design">Need Design</option><option value="leads">Leads</option><option value="complete">Complete</option></select></div>
       <div class="field"><label>Importance (1–5)</label><select id="jImportance"><option>5</option><option>4</option><option selected>3</option><option>2</option><option>1</option></select></div>

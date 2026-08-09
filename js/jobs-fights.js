@@ -6,7 +6,7 @@ const jobDialog = document.getElementById('jobDialog');
 const fightDialog = document.getElementById('fightDialog');
 
 const jName = document.getElementById('jName');
-const jContact = document.getElementById('jContact');
+const jContact = document.getElementById('jContactSearch');
 const jOwner = document.getElementById('jOwner');
 const jStatus = document.getElementById('jStatus');
 const jImportance = document.getElementById('jImportance');
@@ -97,24 +97,14 @@ async function loadJobOptions() {
       contactsError.message,
       true
     );
-  } else {
-    jContact.innerHTML =
-      '<option value="">Select contact</option>' +
-      (contacts ?? [])
-        .map((contact) => {
-          return `
-            <option value="${contact.id}">
-              ${escapeHtml(contact.name)}
-              ${
-                contact.contact_type
-                  ? ` • ${escapeHtml(contact.contact_type)}`
-                  : ''
-              }
-            </option>
-          `;
-        })
-        .join('');
-  }
+ } else {
+
+  cachedContacts =
+    contacts ?? [];
+
+  renderContactOptions();
+
+}
 
   if (profilesError) {
     console.error(
@@ -367,8 +357,13 @@ async function createJob() {
 }
 
 function resetJobForm() {
+
   jName.value = '';
+
+  jContactSearch.value = '';
+
   jContact.value = '';
+
   jOwner.value = '';
 
   jStatus.value =
@@ -378,6 +373,7 @@ function resetJobForm() {
     '3';
 
   jDue.value = '';
+
   jNotes.value = '';
 
   jShowCalendar.checked =
@@ -543,3 +539,80 @@ saveFight?.addEventListener(
   'click',
   createFight
 );
+let cachedContacts = [];
+
+function renderContactOptions(
+  searchText = ''
+) {
+  const search =
+    searchText
+      .trim()
+      .toLowerCase();
+
+  const filtered =
+    cachedContacts.filter(
+      contact => {
+
+        const name =
+          contact.name
+            ?.toLowerCase() ||
+          '';
+
+        const type =
+          contact
+            .contact_type
+            ?.toLowerCase() ||
+          '';
+
+        return (
+          name.includes(search) ||
+          type.includes(search)
+        );
+
+      }
+    );
+
+  jContact.innerHTML =
+    `
+      <option value="">
+        Select contact
+      </option>
+    ` +
+    filtered
+      .map(contact => {
+
+        return `
+          <option value="${contact.id}">
+            ${
+              escapeHtml(
+                contact.name
+              )
+            }
+            ${
+              contact.contact_type
+                ? ` • ${
+                    escapeHtml(
+                      contact
+                        .contact_type
+                    )
+                  }`
+                : ''
+            }
+          </option>
+        `;
+
+      })
+      .join('');
+}
+
+jContactSearch
+  ?.addEventListener(
+    'input',
+    () => {
+
+      renderContactOptions(
+        jContactSearch.value
+      );
+
+    }
+  );
