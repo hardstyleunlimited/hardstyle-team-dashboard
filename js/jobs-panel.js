@@ -1,16 +1,116 @@
 import { supabase } from './supabase.js';
 
+
+/* =========================
+   FIX JOB BOARD STRUCTURE
+========================= */
+
+function fixJobsBoardStructure() {
+
+  // Find EVERY leadJobs element,
+  // even if the HTML accidentally
+  // contains duplicate IDs.
+  const leadColumns =
+    document.querySelectorAll(
+      '[id="leadJobs"]'
+    );
+
+
+  // If there are two LEADS columns,
+  // turn the second one into EVENTS.
+  if (leadColumns.length > 1) {
+
+    const secondLead =
+      leadColumns[1];
+
+    secondLead.id =
+      'eventJobs';
+
+
+    const container =
+      secondLead.closest(
+        '.card, .col'
+      );
+
+
+    if (container) {
+
+      const heading =
+        container.querySelector(
+          'h3, b'
+        );
+
+
+      if (heading) {
+        heading.textContent =
+          'EVENTS';
+      }
+
+    }
+
+  }
+
+
+  // If eventJobs already exists,
+  // make absolutely sure its
+  // heading says EVENTS.
+  const eventElement =
+    document.getElementById(
+      'eventJobs'
+    );
+
+
+  if (eventElement) {
+
+    const container =
+      eventElement.closest(
+        '.card, .col'
+      );
+
+
+    if (container) {
+
+      const heading =
+        container.querySelector(
+          'h3, b'
+        );
+
+
+      if (heading) {
+        heading.textContent =
+          'EVENTS';
+      }
+
+    }
+
+  }
+
+}
+
+
+/* Run immediately */
+fixJobsBoardStructure();
+
+
 const paidJobs =
-  document.getElementById('paidJobs');
+  document.getElementById(
+    'paidJobs'
+  );
 
 const designJobs =
-  document.getElementById('designJobs');
+  document.getElementById(
+    'designJobs'
+  );
 
 const leadJobs =
-  document.getElementById('leadJobs');
+  document.getElementById(
+    'leadJobs'
+  );
 
 const eventJobs =
-  document.getElementById('eventJobs');
+  document.getElementById(
+    'eventJobs'
+  );
 
 
 const ownerColors = {
@@ -25,7 +125,10 @@ const ownerColors = {
 ========================= */
 
 function esc(value) {
-  return String(value ?? '').replace(
+
+  return String(
+    value ?? ''
+  ).replace(
     /[&<>"']/g,
     char => ({
       '&': '&amp;',
@@ -35,13 +138,16 @@ function esc(value) {
       "'": '&#39;'
     }[char])
   );
+
 }
 
 
 function formatDate(value) {
+
   if (!value) {
     return 'No due date';
   }
+
 
   return new Date(
     `${String(value).slice(0, 10)}T12:00:00`
@@ -53,62 +159,78 @@ function formatDate(value) {
       year: 'numeric'
     }
   );
+
 }
 
 
 /* =========================
-   SORTING
+   SORT JOBS
 ========================= */
 
 function sortJobs(jobs) {
+
   return [...jobs].sort(
     (a, b) => {
 
       const importanceA =
-        Number(a.importance ?? 3);
+        Number(
+          a.importance ?? 3
+        );
 
       const importanceB =
-        Number(b.importance ?? 3);
+        Number(
+          b.importance ?? 3
+        );
 
 
-      // Higher importance first
+      // Importance 5 → 1
       if (
         importanceA !==
         importanceB
       ) {
+
         return (
           importanceB -
           importanceA
         );
+
       }
 
 
-      // Earlier due date next
+      // Earliest due date next
       if (
         a.due_date &&
         b.due_date
       ) {
 
         const dateCompare =
-          String(a.due_date)
-            .localeCompare(
-              String(b.due_date)
-            );
+          String(
+            a.due_date
+          ).localeCompare(
+            String(
+              b.due_date
+            )
+          );
 
-        if (dateCompare !== 0) {
+
+        if (
+          dateCompare !== 0
+        ) {
+
           return dateCompare;
+
         }
 
       }
 
 
-      // Jobs with a date before
-      // jobs without a date
       if (
         a.due_date &&
         !b.due_date
       ) {
+
         return -1;
+
       }
 
 
@@ -116,11 +238,12 @@ function sortJobs(jobs) {
         !a.due_date &&
         b.due_date
       ) {
+
         return 1;
+
       }
 
 
-      // Final fallback
       return String(
         a.name ?? ''
       ).localeCompare(
@@ -131,6 +254,7 @@ function sortJobs(jobs) {
 
     }
   );
+
 }
 
 
@@ -154,10 +278,11 @@ function jobCard(
     <div
       class="job"
       data-job-id="${job.id}"
+
       style="
         border-left:
-          5px solid
-          ${ownerColor};
+        5px solid
+        ${ownerColor};
       "
     >
 
@@ -172,8 +297,10 @@ function jobCard(
           margin-top:5px;
         "
       >
+
         Importance
         ${job.importance ?? 3}/5
+
       </div>
 
 
@@ -184,12 +311,14 @@ function jobCard(
           margin-top:6px;
         "
       >
+
         ${
           esc(
             job.contacts?.name ||
             'No contact'
           )
         }
+
       </div>
 
 
@@ -200,8 +329,10 @@ function jobCard(
           margin-top:3px;
         "
       >
+
         Assigned:
         ${esc(ownerName)}
+
       </div>
 
 
@@ -212,6 +343,7 @@ function jobCard(
           margin-top:3px;
         "
       >
+
         Due:
         ${
           esc(
@@ -220,11 +352,13 @@ function jobCard(
             )
           )
         }
+
       </div>
 
 
       ${
         job.notes
+
           ? `
               <div
                 class="muted"
@@ -233,14 +367,18 @@ function jobCard(
                   margin-top:7px;
                 "
               >
+
                 ${esc(job.notes)}
+
               </div>
             `
+
           : ''
       }
 
     </div>
   `;
+
 }
 
 
@@ -259,11 +397,13 @@ function renderColumn(
   }
 
 
-  const sortedJobs =
+  const sorted =
     sortJobs(jobs);
 
 
-  if (!sortedJobs.length) {
+  if (
+    !sorted.length
+  ) {
 
     element.innerHTML = `
       <div class="muted">
@@ -276,7 +416,7 @@ function renderColumn(
 
 
   element.innerHTML =
-    sortedJobs
+    sorted
       .map(
         job => {
 
@@ -295,14 +435,20 @@ function renderColumn(
         }
       )
       .join('');
+
 }
 
 
 /* =========================
-   LOAD JOBS
+   REFRESH JOB BOARD
 ========================= */
 
 export async function refreshJobsPanel() {
+
+  // Repair board again in case
+  // anything changed in the DOM.
+  fixJobsBoardStructure();
+
 
   const {
     data: { session },
@@ -313,12 +459,14 @@ export async function refreshJobsPanel() {
 
 
   if (sessionError) {
+
     console.error(
       'Jobs session error:',
       sessionError
     );
 
     return;
+
   }
 
 
@@ -353,6 +501,7 @@ export async function refreshJobsPanel() {
           )
         `),
 
+
       supabase
         .from('profiles')
         .select(`
@@ -364,53 +513,23 @@ export async function refreshJobsPanel() {
     ]);
 
 
-  if (jobsResult.error) {
+  if (
+    jobsResult.error
+  ) {
 
     console.error(
       'Jobs panel error:',
       jobsResult.error
     );
 
-
-    const message = `
-      <div class="muted">
-        Could not load jobs:
-        ${
-          esc(
-            jobsResult
-              .error
-              .message
-          )
-        }
-      </div>
-    `;
-
-
-    if (paidJobs) {
-      paidJobs.innerHTML =
-        message;
-    }
-
-    if (designJobs) {
-      designJobs.innerHTML =
-        message;
-    }
-
-    if (leadJobs) {
-      leadJobs.innerHTML =
-        message;
-    }
-
-    if (eventJobs) {
-      eventJobs.innerHTML =
-        message;
-    }
-
     return;
+
   }
 
 
-  if (profilesResult.error) {
+  if (
+    profilesResult.error
+  ) {
 
     console.error(
       'Profiles error:',
@@ -444,6 +563,10 @@ export async function refreshJobsPanel() {
     [];
 
 
+  /* =========================
+     SPLIT BY STATUS
+  ========================= */
+
   const paid =
     jobs.filter(
       job =>
@@ -476,37 +599,50 @@ export async function refreshJobsPanel() {
     );
 
 
+  /* =========================
+     RENDER
+  ========================= */
+
   renderColumn(
-    paidJobs,
+    document.getElementById(
+      'paidJobs'
+    ),
     paid,
     profiles
   );
 
 
   renderColumn(
-    designJobs,
+    document.getElementById(
+      'designJobs'
+    ),
     design,
     profiles
   );
 
 
   renderColumn(
-    leadJobs,
+    document.getElementById(
+      'leadJobs'
+    ),
     leads,
     profiles
   );
 
 
   renderColumn(
-    eventJobs,
+    document.getElementById(
+      'eventJobs'
+    ),
     events,
     profiles
   );
+
 }
 
 
 /* =========================
-   GLOBAL REFRESH FUNCTION
+   GLOBAL REFRESH
 ========================= */
 
 window.refreshHardstyleJobs =
@@ -514,7 +650,7 @@ window.refreshHardstyleJobs =
 
 
 /* =========================
-   AUTO REFRESH EVENT
+   DATA CHANGE LISTENER
 ========================= */
 
 window.addEventListener(
@@ -540,6 +676,9 @@ window.addEventListener(
 
 async function startJobsPanel() {
 
+  fixJobsBoardStructure();
+
+
   const {
     data: { session }
   } =
@@ -547,7 +686,9 @@ async function startJobsPanel() {
       .getSession();
 
 
-  if (session?.user) {
+  if (
+    session?.user
+  ) {
 
     await refreshJobsPanel();
 
@@ -576,6 +717,7 @@ async function startJobsPanel() {
 
       }
     );
+
 }
 
 
