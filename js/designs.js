@@ -1,0 +1,2351 @@
+import { supabase } from './supabase.js';
+
+
+/* =========================================================
+   CONFIG
+========================================================= */
+
+const STORAGE_BUCKET =
+  'hardstyle-designs';
+
+
+const SHIRT_SIZES = [
+  '3T',
+  '4T',
+  '5T',
+  '6T',
+  'YS',
+  'YM',
+  'YL',
+  'SMALL',
+  'MEDIUM',
+  'LARGE',
+  'XL',
+  '2XL',
+  '3XL',
+  '4XL',
+  '5XL'
+];
+
+
+const RASH_GUARD_SIZES = [
+  'YS',
+  'YM',
+  'YL',
+  'SMALL',
+  'MEDIUM',
+  'LARGE',
+  'XL',
+  '2XL',
+  '3XL',
+  '4XL',
+  '5XL'
+];
+
+
+const WAIST_SIZES = [
+  '24',
+  '26',
+  '28',
+  '30',
+  '32',
+  '34',
+  '36',
+  '38',
+  '40',
+  '42',
+  '44',
+  '46'
+];
+
+
+const PRODUCT_LABELS = {
+  standard_tee:
+    'Standard Tee',
+
+  heavy_weight_tee:
+    'Heavy Weight Tee',
+
+  standard_shorts:
+    'Standard Shorts',
+
+  gladiator_shorts:
+    'Gladiator Shorts',
+
+  spats:
+    'Spats',
+
+  rash_guard:
+    'Rash Guard',
+
+  special:
+    'Special'
+};
+
+
+/* =========================================================
+   DOM
+========================================================= */
+
+const notLoggedIn =
+  document.getElementById(
+    'notLoggedIn'
+  );
+
+const designApp =
+  document.getElementById(
+    'designApp'
+  );
+
+const newDesignBtn =
+  document.getElementById(
+    'newDesignBtn'
+  );
+
+const designSearch =
+  document.getElementById(
+    'designSearch'
+  );
+
+const designProjectList =
+  document.getElementById(
+    'designProjectList'
+  );
+
+const designFormHeading =
+  document.getElementById(
+    'designFormHeading'
+  );
+
+const designIdText =
+  document.getElementById(
+    'designIdText'
+  );
+
+const savedBadge =
+  document.getElementById(
+    'savedBadge'
+  );
+
+const dTitle =
+  document.getElementById(
+    'dTitle'
+  );
+
+const dJob =
+  document.getElementById(
+    'dJob'
+  );
+
+const dContact =
+  document.getElementById(
+    'dContact'
+  );
+
+const dType =
+  document.getElementById(
+    'dType'
+  );
+
+const dNotes =
+  document.getElementById(
+    'dNotes'
+  );
+
+const sizeGrid =
+  document.getElementById(
+    'sizeGrid'
+  );
+
+const sizeDescription =
+  document.getElementById(
+    'sizeDescription'
+  );
+
+const totalQuantity =
+  document.getElementById(
+    'totalQuantity'
+  );
+
+const designStatus =
+  document.getElementById(
+    'designStatus'
+  );
+
+const saveDesignBtn =
+  document.getElementById(
+    'saveDesignBtn'
+  );
+
+const uploadNotice =
+  document.getElementById(
+    'uploadNotice'
+  );
+
+const designAssetDropzone =
+  document.getElementById(
+    'designAssetDropzone'
+  );
+
+const designAssetFiles =
+  document.getElementById(
+    'designAssetFiles'
+  );
+
+const designAssetStatus =
+  document.getElementById(
+    'designAssetStatus'
+  );
+
+const designAssetList =
+  document.getElementById(
+    'designAssetList'
+  );
+
+const sponsorDropzone =
+  document.getElementById(
+    'sponsorDropzone'
+  );
+
+const sponsorFiles =
+  document.getElementById(
+    'sponsorFiles'
+  );
+
+const sponsorStatus =
+  document.getElementById(
+    'sponsorStatus'
+  );
+
+const sponsorList =
+  document.getElementById(
+    'sponsorList'
+  );
+
+
+/* =========================================================
+   STATE
+========================================================= */
+
+let currentUser = null;
+
+let currentDesignId = null;
+
+let designsCache = [];
+let contactsCache = [];
+let jobsCache = [];
+let uploadsCache = [];
+
+let currentQuantities = {};
+
+
+/* =========================================================
+   HELPERS
+========================================================= */
+
+function esc(value) {
+
+  return String(
+    value ?? ''
+  ).replace(
+    /[&<>"']/g,
+    char => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[char])
+  );
+
+}
+
+
+function setStatus(
+  element,
+  message,
+  error = false
+) {
+
+  if (!element) {
+    return;
+  }
+
+
+  element.textContent =
+    message;
+
+
+  element.style.color =
+    error
+      ? '#fca5a5'
+      : '';
+
+}
+
+
+function safeFilename(
+  filename
+) {
+
+  const parts =
+    filename.split('.');
+
+
+  let extension = '';
+
+  if (parts.length > 1) {
+
+    extension =
+      `.${parts.pop()
+        .toLowerCase()
+        .replace(
+          /[^a-z0-9]/g,
+          ''
+        )}`;
+
+  }
+
+
+  const base =
+    parts.join('.')
+      .trim()
+      .replace(
+        /[^a-zA-Z0-9-_]+/g,
+        '-'
+      )
+      .replace(
+        /-+/g,
+        '-'
+      )
+      .replace(
+        /^-|-$|/g,
+        ''
+      );
+
+
+  return (
+    (base || 'file') +
+    extension
+  );
+
+}
+
+
+function getSizesForType(
+  type
+) {
+
+  if (
+    type ===
+      'standard_shorts' ||
+
+    type ===
+      'gladiator_shorts' ||
+
+    type ===
+      'spats'
+  ) {
+
+    return WAIST_SIZES;
+
+  }
+
+
+  if (
+    type ===
+    'rash_guard'
+  ) {
+
+    return RASH_GUARD_SIZES;
+
+  }
+
+
+  return SHIRT_SIZES;
+
+}
+
+
+function getSizeDescription(
+  type
+) {
+
+  if (
+    type ===
+      'standard_shorts' ||
+
+    type ===
+      'gladiator_shorts' ||
+
+    type ===
+      'spats'
+  ) {
+
+    return 'Waist sizes';
+
+  }
+
+
+  if (
+    type ===
+    'rash_guard'
+  ) {
+
+    return 'Youth and adult rash guard sizes';
+
+  }
+
+
+  return 'Youth and adult garment sizes';
+
+}
+
+
+function calculateTotal() {
+
+  const total =
+    Object.values(
+      currentQuantities
+    ).reduce(
+      (
+        sum,
+        quantity
+      ) =>
+        sum +
+        Number(
+          quantity || 0
+        ),
+      0
+    );
+
+
+  totalQuantity.textContent =
+    String(total);
+
+}
+
+
+/* =========================================================
+   AUTH
+========================================================= */
+
+async function checkAuth() {
+
+  const {
+    data: { session },
+    error
+  } =
+    await supabase.auth
+      .getSession();
+
+
+  if (error) {
+
+    console.error(
+      'Design auth error:',
+      error
+    );
+
+  }
+
+
+  if (
+    !session?.user
+  ) {
+
+    designApp.style.display =
+      'none';
+
+    notLoggedIn.style.display =
+      'block';
+
+    return false;
+
+  }
+
+
+  currentUser =
+    session.user;
+
+
+  notLoggedIn.style.display =
+    'none';
+
+  designApp.style.display =
+    'block';
+
+
+  return true;
+
+}
+
+
+/* =========================================================
+   LOAD CONTACTS + JOBS
+========================================================= */
+
+async function loadOptions() {
+
+  const [
+    contactsResult,
+    jobsResult
+  ] =
+    await Promise.all([
+
+      supabase
+        .from('contacts')
+        .select(`
+          id,
+          name,
+          contact_type
+        `)
+        .order(
+          'name',
+          {
+            ascending: true
+          }
+        ),
+
+
+      supabase
+        .from('jobs')
+        .select(`
+          id,
+          name,
+          contact_id,
+          status,
+          due_date
+        `)
+        .neq(
+          'status',
+          'complete'
+        )
+        .order(
+          'due_date',
+          {
+            ascending: true,
+            nullsFirst: false
+          }
+        )
+
+    ]);
+
+
+  if (
+    contactsResult.error
+  ) {
+
+    throw contactsResult.error;
+
+  }
+
+
+  if (
+    jobsResult.error
+  ) {
+
+    throw jobsResult.error;
+
+  }
+
+
+  contactsCache =
+    contactsResult.data ??
+    [];
+
+
+  jobsCache =
+    jobsResult.data ??
+    [];
+
+
+  renderContactOptions();
+
+  renderJobOptions();
+
+}
+
+
+/* =========================================================
+   CONTACT OPTIONS
+========================================================= */
+
+function renderContactOptions(
+  selectedId = null
+) {
+
+  dContact.innerHTML = `
+
+    <option value="">
+      Select contact
+    </option>
+
+    ${
+      contactsCache
+        .map(
+          contact => `
+
+            <option
+              value="${contact.id}"
+
+              ${
+                Number(
+                  selectedId
+                ) ===
+                Number(
+                  contact.id
+                )
+                  ? 'selected'
+                  : ''
+              }
+            >
+
+              ${esc(contact.name)}
+
+              •
+              ${esc(
+                contact.contact_type
+              )}
+
+            </option>
+
+          `
+        )
+        .join('')
+    }
+
+  `;
+
+}
+
+
+/* =========================================================
+   JOB OPTIONS
+========================================================= */
+
+function renderJobOptions(
+  selectedId = null
+) {
+
+  dJob.innerHTML = `
+
+    <option value="">
+      No linked job
+    </option>
+
+    ${
+      jobsCache
+        .map(
+          job => `
+
+            <option
+              value="${job.id}"
+
+              ${
+                Number(
+                  selectedId
+                ) ===
+                Number(
+                  job.id
+                )
+                  ? 'selected'
+                  : ''
+              }
+            >
+
+              ${esc(job.name)}
+
+            </option>
+
+          `
+        )
+        .join('')
+    }
+
+  `;
+
+}
+
+
+/* =========================================================
+   JOB AUTO-SELECT CONTACT
+========================================================= */
+
+dJob.addEventListener(
+  'change',
+  () => {
+
+    if (!dJob.value) {
+      return;
+    }
+
+
+    const job =
+      jobsCache.find(
+        item =>
+          Number(item.id) ===
+          Number(dJob.value)
+      );
+
+
+    if (
+      job?.contact_id
+    ) {
+
+      dContact.value =
+        String(
+          job.contact_id
+        );
+
+    }
+
+  }
+);
+
+
+/* =========================================================
+   SIZE GRID
+========================================================= */
+
+function renderSizeGrid(
+  quantities = null
+) {
+
+  const type =
+    dType.value;
+
+
+  const sizes =
+    getSizesForType(
+      type
+    );
+
+
+  const previous =
+    quantities ??
+    currentQuantities ??
+    {};
+
+
+  currentQuantities = {};
+
+
+  sizes.forEach(
+    size => {
+
+      currentQuantities[size] =
+        Number(
+          previous[size] || 0
+        );
+
+    }
+  );
+
+
+  sizeDescription.textContent =
+    getSizeDescription(
+      type
+    );
+
+
+  sizeGrid.innerHTML =
+    sizes
+      .map(
+        size => `
+
+          <div class="size-box">
+
+            <label>
+              ${esc(size)}
+            </label>
+
+            <input
+              class="sizeQty"
+              data-size="${esc(size)}"
+              type="number"
+              min="0"
+              step="1"
+              value="${
+                currentQuantities[
+                  size
+                ] || 0
+              }"
+            >
+
+          </div>
+
+        `
+      )
+      .join('');
+
+
+  sizeGrid
+    .querySelectorAll(
+      '.sizeQty'
+    )
+    .forEach(
+      input => {
+
+        input.addEventListener(
+          'input',
+          () => {
+
+            currentQuantities[
+              input.dataset.size
+            ] =
+              Math.max(
+                0,
+                Number(
+                  input.value || 0
+                )
+              );
+
+
+            calculateTotal();
+
+          }
+        );
+
+      }
+    );
+
+
+  calculateTotal();
+
+}
+
+
+dType.addEventListener(
+  'change',
+  () => {
+
+    /*
+      Product types have different
+      size systems, so start a clean
+      breakdown when the product changes.
+    */
+
+    renderSizeGrid({});
+
+  }
+);
+
+
+/* =========================================================
+   LOAD DESIGNS
+========================================================= */
+
+async function loadDesigns() {
+
+  const {
+    data,
+    error
+  } =
+    await supabase
+      .from('designs')
+      .select(`
+        id,
+        job_id,
+        contact_id,
+        title,
+        design_type,
+        notes,
+        specs,
+        created_by,
+        created_at,
+        updated_at,
+
+        contacts (
+          id,
+          name
+        ),
+
+        jobs (
+          id,
+          name
+        )
+      `)
+      .order(
+        'updated_at',
+        {
+          ascending: false
+        }
+      );
+
+
+  if (error) {
+
+    console.error(
+      'Load designs error:',
+      error
+    );
+
+
+    designProjectList.innerHTML = `
+
+      <div class="muted">
+        ${esc(error.message)}
+      </div>
+
+    `;
+
+
+    return;
+
+  }
+
+
+  designsCache =
+    data ?? [];
+
+
+  renderDesignList(
+    designSearch.value
+  );
+
+}
+
+
+/* =========================================================
+   RENDER DESIGN PROJECTS
+========================================================= */
+
+function renderDesignList(
+  search = ''
+) {
+
+  const query =
+    search
+      .trim()
+      .toLowerCase();
+
+
+  const designs =
+    designsCache.filter(
+      design => {
+
+        if (!query) {
+          return true;
+        }
+
+
+        return [
+
+          design.title,
+
+          design.design_type,
+
+          design.contacts?.name,
+
+          design.jobs?.name,
+
+          design.notes
+
+        ].some(
+          value =>
+            String(
+              value ?? ''
+            )
+              .toLowerCase()
+              .includes(query)
+        );
+
+      }
+    );
+
+
+  if (
+    !designs.length
+  ) {
+
+    designProjectList.innerHTML = `
+
+      <div class="muted">
+        No matching designs.
+      </div>
+
+    `;
+
+    return;
+
+  }
+
+
+  designProjectList.innerHTML =
+    designs
+      .map(
+        design => `
+
+          <button
+            class="
+              project-card
+              ${
+                Number(
+                  currentDesignId
+                ) ===
+                Number(
+                  design.id
+                )
+                  ? 'active'
+                  : ''
+              }
+            "
+
+            data-design-id="${
+              design.id
+            }"
+
+            type="button"
+          >
+
+            <strong>
+              ${esc(design.title)}
+            </strong>
+
+            <div
+              class="muted"
+              style="
+                font-size:11px;
+                margin-top:5px;
+              "
+            >
+
+              ${
+                esc(
+                  PRODUCT_LABELS[
+                    design.design_type
+                  ] ||
+                  design.design_type
+                )
+              }
+
+            </div>
+
+            ${
+              design.contacts?.name
+                ? `
+                    <div
+                      class="muted"
+                      style="
+                        font-size:11px;
+                        margin-top:3px;
+                      "
+                    >
+                      ${
+                        esc(
+                          design.contacts.name
+                        )
+                      }
+                    </div>
+                  `
+                : ''
+            }
+
+          </button>
+
+        `
+      )
+      .join('');
+
+
+  designProjectList
+    .querySelectorAll(
+      '.project-card'
+    )
+    .forEach(
+      button => {
+
+        button.addEventListener(
+          'click',
+          () => {
+
+            openDesign(
+              Number(
+                button.dataset
+                  .designId
+              )
+            );
+
+          }
+        );
+
+      }
+    );
+
+}
+
+
+designSearch.addEventListener(
+  'input',
+  () => {
+
+    renderDesignList(
+      designSearch.value
+    );
+
+  }
+);
+
+
+/* =========================================================
+   NEW DESIGN
+========================================================= */
+
+function newDesign() {
+
+  currentDesignId =
+    null;
+
+
+  currentQuantities =
+    {};
+
+
+  designFormHeading.textContent =
+    'NEW DESIGN';
+
+
+  designIdText.textContent =
+    'Create a production project';
+
+
+  savedBadge.style.display =
+    'none';
+
+
+  dTitle.value =
+    '';
+
+
+  dJob.value =
+    '';
+
+
+  dContact.value =
+    '';
+
+
+  dType.value =
+    'standard_tee';
+
+
+  dNotes.value =
+    '';
+
+
+  setStatus(
+    designStatus,
+    ''
+  );
+
+
+  renderSizeGrid({});
+
+
+  disableUploads();
+
+
+  uploadsCache =
+    [];
+
+
+  renderUploads();
+
+
+  renderDesignList(
+    designSearch.value
+  );
+
+}
+
+
+newDesignBtn.addEventListener(
+  'click',
+  newDesign
+);
+
+
+/* =========================================================
+   OPEN DESIGN
+========================================================= */
+
+async function openDesign(
+  designId
+) {
+
+  const design =
+    designsCache.find(
+      item =>
+        Number(item.id) ===
+        Number(designId)
+    );
+
+
+  if (!design) {
+    return;
+  }
+
+
+  currentDesignId =
+    design.id;
+
+
+  designFormHeading.textContent =
+    design.title;
+
+
+  designIdText.textContent =
+    `Design #${design.id}`;
+
+
+  savedBadge.style.display =
+    'inline-block';
+
+
+  dTitle.value =
+    design.title || '';
+
+
+  renderJobOptions(
+    design.job_id
+  );
+
+
+  renderContactOptions(
+    design.contact_id
+  );
+
+
+  dType.value =
+    design.design_type ||
+    'standard_tee';
+
+
+  dNotes.value =
+    design.notes || '';
+
+
+  const quantities =
+    design.specs
+      ?.quantities ||
+    {};
+
+
+  renderSizeGrid(
+    quantities
+  );
+
+
+  setStatus(
+    designStatus,
+    ''
+  );
+
+
+  enableUploads();
+
+
+  renderDesignList(
+    designSearch.value
+  );
+
+
+  await loadUploads();
+
+}
+
+
+/* =========================================================
+   SAVE DESIGN
+========================================================= */
+
+saveDesignBtn.addEventListener(
+  'click',
+  saveDesign
+);
+
+
+async function saveDesign() {
+
+  if (!currentUser) {
+    return;
+  }
+
+
+  const title =
+    dTitle.value.trim();
+
+
+  if (!title) {
+
+    setStatus(
+      designStatus,
+      'Enter a design / project name.',
+      true
+    );
+
+    return;
+
+  }
+
+
+  if (!dContact.value) {
+
+    setStatus(
+      designStatus,
+      'Select a customer or fighter.',
+      true
+    );
+
+    return;
+
+  }
+
+
+  saveDesignBtn.disabled =
+    true;
+
+
+  saveDesignBtn.textContent =
+    'Saving...';
+
+
+  setStatus(
+    designStatus,
+    'Saving design...'
+  );
+
+
+  const payload = {
+
+    title,
+
+    job_id:
+      dJob.value
+        ? Number(
+            dJob.value
+          )
+        : null,
+
+    contact_id:
+      Number(
+        dContact.value
+      ),
+
+    design_type:
+      dType.value,
+
+    notes:
+      dNotes.value.trim() ||
+      null,
+
+    specs: {
+      quantities:
+        currentQuantities,
+
+      total_quantity:
+        Number(
+          totalQuantity.textContent ||
+          0
+        )
+    },
+
+    updated_at:
+      new Date()
+        .toISOString()
+
+  };
+
+
+  let result;
+
+
+  if (currentDesignId) {
+
+    result =
+      await supabase
+        .from('designs')
+        .update(
+          payload
+        )
+        .eq(
+          'id',
+          currentDesignId
+        )
+        .select()
+        .single();
+
+  } else {
+
+    result =
+      await supabase
+        .from('designs')
+        .insert({
+          ...payload,
+
+          created_by:
+            currentUser.id
+        })
+        .select()
+        .single();
+
+  }
+
+
+  if (result.error) {
+
+    console.error(
+      'Save design error:',
+      result.error
+    );
+
+
+    setStatus(
+      designStatus,
+      result.error.message,
+      true
+    );
+
+
+    saveDesignBtn.disabled =
+      false;
+
+
+    saveDesignBtn.textContent =
+      'Save Design';
+
+
+    return;
+
+  }
+
+
+  currentDesignId =
+    result.data.id;
+
+
+  setStatus(
+    designStatus,
+    'Design saved.'
+  );
+
+
+  savedBadge.style.display =
+    'inline-block';
+
+
+  designIdText.textContent =
+    `Design #${currentDesignId}`;
+
+
+  enableUploads();
+
+
+  await loadDesigns();
+
+
+  await loadUploads();
+
+
+  saveDesignBtn.disabled =
+    false;
+
+
+  saveDesignBtn.textContent =
+    'Save Design';
+
+}
+
+
+/* =========================================================
+   UPLOAD ENABLE / DISABLE
+========================================================= */
+
+function disableUploads() {
+
+  designAssetDropzone
+    .classList
+    .add(
+      'disabled'
+    );
+
+
+  sponsorDropzone
+    .classList
+    .add(
+      'disabled'
+    );
+
+
+  designAssetFiles.disabled =
+    true;
+
+
+  sponsorFiles.disabled =
+    true;
+
+
+  uploadNotice.textContent =
+    'Save the design before uploading files.';
+
+}
+
+
+function enableUploads() {
+
+  designAssetDropzone
+    .classList
+    .remove(
+      'disabled'
+    );
+
+
+  sponsorDropzone
+    .classList
+    .remove(
+      'disabled'
+    );
+
+
+  designAssetFiles.disabled =
+    false;
+
+
+  sponsorFiles.disabled =
+    false;
+
+
+  uploadNotice.textContent =
+    `Files are attached to Design #${currentDesignId}.`;
+
+}
+
+
+/* =========================================================
+   FILE INPUTS
+========================================================= */
+
+designAssetFiles.addEventListener(
+  'change',
+  async () => {
+
+    await uploadFiles(
+      designAssetFiles.files,
+      'design_asset'
+    );
+
+
+    designAssetFiles.value =
+      '';
+
+  }
+);
+
+
+sponsorFiles.addEventListener(
+  'change',
+  async () => {
+
+    await uploadFiles(
+      sponsorFiles.files,
+      'sponsor'
+    );
+
+
+    sponsorFiles.value =
+      '';
+
+  }
+);
+
+
+/* =========================================================
+   DRAG + DROP
+========================================================= */
+
+setupDropzone(
+  designAssetDropzone,
+  'design_asset'
+);
+
+
+setupDropzone(
+  sponsorDropzone,
+  'sponsor'
+);
+
+
+function setupDropzone(
+  element,
+  category
+) {
+
+  [
+    'dragenter',
+    'dragover'
+  ].forEach(
+    eventName => {
+
+      element.addEventListener(
+        eventName,
+        event => {
+
+          event.preventDefault();
+
+
+          if (
+            !currentDesignId
+          ) {
+            return;
+          }
+
+
+          element.classList.add(
+            'dragging'
+          );
+
+        }
+      );
+
+    }
+  );
+
+
+  [
+    'dragleave',
+    'drop'
+  ].forEach(
+    eventName => {
+
+      element.addEventListener(
+        eventName,
+        event => {
+
+          event.preventDefault();
+
+
+          element.classList.remove(
+            'dragging'
+          );
+
+        }
+      );
+
+    }
+  );
+
+
+  element.addEventListener(
+    'drop',
+    async event => {
+
+      if (
+        !currentDesignId
+      ) {
+        return;
+      }
+
+
+      await uploadFiles(
+        event.dataTransfer.files,
+        category
+      );
+
+    }
+  );
+
+}
+
+
+/* =========================================================
+   UPLOAD FILES
+========================================================= */
+
+async function uploadFiles(
+  fileList,
+  category
+) {
+
+  if (
+    !currentDesignId ||
+    !currentUser
+  ) {
+
+    return;
+
+  }
+
+
+  const files =
+    Array.from(
+      fileList || []
+    );
+
+
+  if (!files.length) {
+    return;
+  }
+
+
+  const statusElement =
+    category ===
+      'sponsor'
+      ? sponsorStatus
+      : designAssetStatus;
+
+
+  setStatus(
+    statusElement,
+    `Uploading ${files.length} file${
+      files.length === 1
+        ? ''
+        : 's'
+    }...`
+  );
+
+
+  const currentDesign =
+    designsCache.find(
+      design =>
+        Number(design.id) ===
+        Number(currentDesignId)
+    );
+
+
+  let completed =
+    0;
+
+
+  for (
+    const file
+    of files
+  ) {
+
+    try {
+
+      const cleanName =
+        safeFilename(
+          file.name
+        );
+
+
+      const path = [
+
+        `design-${currentDesignId}`,
+
+        category,
+
+        `${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2,8)}-${cleanName}`
+
+      ].join('/');
+
+
+      /*
+        Upload original browser File object.
+        No resizing or compression.
+      */
+
+      const {
+        error:
+          storageError
+      } =
+        await supabase
+          .storage
+          .from(
+            STORAGE_BUCKET
+          )
+          .upload(
+            path,
+            file,
+            {
+              cacheControl:
+                '3600',
+
+              upsert:
+                false,
+
+              contentType:
+                file.type ||
+                undefined
+            }
+          );
+
+
+      if (storageError) {
+        throw storageError;
+      }
+
+
+      const {
+        error:
+          databaseError
+      } =
+        await supabase
+          .from('uploads')
+          .insert({
+
+            design_id:
+              currentDesignId,
+
+            job_id:
+              currentDesign
+                ?.job_id ||
+              (
+                dJob.value
+                  ? Number(
+                      dJob.value
+                    )
+                  : null
+              ),
+
+            contact_id:
+              currentDesign
+                ?.contact_id ||
+              (
+                dContact.value
+                  ? Number(
+                      dContact.value
+                    )
+                  : null
+              ),
+
+            category,
+
+            file_name:
+              file.name,
+
+            /*
+              file_url stores the
+              private Storage path.
+            */
+            file_url:
+              path,
+
+            file_type:
+              file.type ||
+              null,
+
+            uploaded_by:
+              currentUser.id
+
+          });
+
+
+      if (databaseError) {
+
+        /*
+          Avoid orphaning a Storage file
+          if the database insert fails.
+        */
+
+        await supabase
+          .storage
+          .from(
+            STORAGE_BUCKET
+          )
+          .remove([
+            path
+          ]);
+
+
+        throw databaseError;
+
+      }
+
+
+      completed++;
+
+
+      setStatus(
+        statusElement,
+        `Uploaded ${completed} of ${files.length}...`
+      );
+
+
+    } catch (error) {
+
+      console.error(
+        'Upload error:',
+        error
+      );
+
+
+      setStatus(
+        statusElement,
+        error.message ||
+        'Upload failed.',
+        true
+      );
+
+
+      await loadUploads();
+
+      return;
+
+    }
+
+  }
+
+
+  setStatus(
+    statusElement,
+    `${completed} file${
+      completed === 1
+        ? ''
+        : 's'
+    } uploaded.`
+  );
+
+
+  await loadUploads();
+
+}
+
+
+/* =========================================================
+   LOAD UPLOAD RECORDS
+========================================================= */
+
+async function loadUploads() {
+
+  if (!currentDesignId) {
+
+    uploadsCache =
+      [];
+
+    renderUploads();
+
+    return;
+
+  }
+
+
+  const {
+    data,
+    error
+  } =
+    await supabase
+      .from('uploads')
+      .select(`
+        id,
+        design_id,
+        job_id,
+        contact_id,
+        category,
+        file_name,
+        file_url,
+        file_type,
+        uploaded_by,
+        created_at
+      `)
+      .eq(
+        'design_id',
+        currentDesignId
+      )
+      .order(
+        'created_at',
+        {
+          ascending: false
+        }
+      );
+
+
+  if (error) {
+
+    console.error(
+      'Load uploads error:',
+      error
+    );
+
+    return;
+
+  }
+
+
+  uploadsCache =
+    data ?? [];
+
+
+  renderUploads();
+
+}
+
+
+/* =========================================================
+   RENDER UPLOAD LISTS
+========================================================= */
+
+function renderUploads() {
+
+  const assets =
+    uploadsCache.filter(
+      upload =>
+        upload.category ===
+        'design_asset'
+    );
+
+
+  const sponsors =
+    uploadsCache.filter(
+      upload =>
+        upload.category ===
+        'sponsor'
+    );
+
+
+  designAssetList.innerHTML =
+    renderFileRows(
+      assets
+    );
+
+
+  sponsorList.innerHTML =
+    renderFileRows(
+      sponsors
+    );
+
+
+  bindFileButtons();
+
+}
+
+
+function renderFileRows(
+  files
+) {
+
+  if (!files.length) {
+
+    return `
+
+      <div class="muted">
+        No files uploaded.
+      </div>
+
+    `;
+
+  }
+
+
+  return files
+    .map(
+      file => `
+
+        <div class="file-row">
+
+          <div>
+
+            <div class="file-name">
+              ${esc(file.file_name)}
+            </div>
+
+            <div
+              class="muted"
+              style="
+                font-size:10px;
+                margin-top:3px;
+              "
+            >
+              ${
+                esc(
+                  file.file_type ||
+                  'File'
+                )
+              }
+            </div>
+
+          </div>
+
+
+          <div class="file-actions">
+
+            <button
+              class="
+                tiny-btn
+                openUpload
+              "
+              data-upload-id="${file.id}"
+              type="button"
+            >
+              Open
+            </button>
+
+
+            <button
+              class="
+                tiny-btn
+                danger
+                deleteUpload
+              "
+              data-upload-id="${file.id}"
+              type="button"
+            >
+              Delete
+            </button>
+
+          </div>
+
+        </div>
+
+      `
+    )
+    .join('');
+
+}
+
+
+/* =========================================================
+   FILE BUTTONS
+========================================================= */
+
+function bindFileButtons() {
+
+  document
+    .querySelectorAll(
+      '.openUpload'
+    )
+    .forEach(
+      button => {
+
+        button.addEventListener(
+          'click',
+          async () => {
+
+            await openUpload(
+              Number(
+                button.dataset
+                  .uploadId
+              )
+            );
+
+          }
+        );
+
+      }
+    );
+
+
+  document
+    .querySelectorAll(
+      '.deleteUpload'
+    )
+    .forEach(
+      button => {
+
+        button.addEventListener(
+          'click',
+          async () => {
+
+            await deleteUpload(
+              Number(
+                button.dataset
+                  .uploadId
+              )
+            );
+
+          }
+        );
+
+      }
+    );
+
+}
+
+
+/* =========================================================
+   OPEN PRIVATE FILE
+========================================================= */
+
+async function openUpload(
+  uploadId
+) {
+
+  const upload =
+    uploadsCache.find(
+      item =>
+        Number(item.id) ===
+        Number(uploadId)
+    );
+
+
+  if (!upload) {
+    return;
+  }
+
+
+  const {
+    data,
+    error
+  } =
+    await supabase
+      .storage
+      .from(
+        STORAGE_BUCKET
+      )
+      .createSignedUrl(
+        upload.file_url,
+        3600
+      );
+
+
+  if (error) {
+
+    alert(
+      error.message
+    );
+
+    return;
+
+  }
+
+
+  if (
+    data?.signedUrl
+  ) {
+
+    window.open(
+      data.signedUrl,
+      '_blank',
+      'noopener,noreferrer'
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   DELETE UPLOAD
+========================================================= */
+
+async function deleteUpload(
+  uploadId
+) {
+
+  const upload =
+    uploadsCache.find(
+      item =>
+        Number(item.id) ===
+        Number(uploadId)
+    );
+
+
+  if (!upload) {
+    return;
+  }
+
+
+  const confirmed =
+    confirm(
+      `Delete "${upload.file_name}"?`
+    );
+
+
+  if (!confirmed) {
+    return;
+  }
+
+
+  const {
+    error:
+      storageError
+  } =
+    await supabase
+      .storage
+      .from(
+        STORAGE_BUCKET
+      )
+      .remove([
+        upload.file_url
+      ]);
+
+
+  if (storageError) {
+
+    alert(
+      storageError.message
+    );
+
+    return;
+
+  }
+
+
+  const {
+    error:
+      databaseError
+  } =
+    await supabase
+      .from('uploads')
+      .delete()
+      .eq(
+        'id',
+        upload.id
+      );
+
+
+  if (databaseError) {
+
+    alert(
+      databaseError.message
+    );
+
+    return;
+
+  }
+
+
+  await loadUploads();
+
+}
+
+
+/* =========================================================
+   START
+========================================================= */
+
+async function start() {
+
+  const authorized =
+    await checkAuth();
+
+
+  if (!authorized) {
+    return;
+  }
+
+
+  try {
+
+    await loadOptions();
+
+    renderSizeGrid({});
+
+    disableUploads();
+
+    await loadDesigns();
+
+
+  } catch (error) {
+
+    console.error(
+      'Design Center startup error:',
+      error
+    );
+
+
+    setStatus(
+      designStatus,
+      error.message,
+      true
+    );
+
+  }
+
+}
+
+
+start();
