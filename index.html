@@ -535,34 +535,23 @@
 
       main {
         padding: 12px;
-        .jobs-board-grid {
-  grid-template-columns:
-    repeat(
-      4,
-      minmax(0, 1fr)
-    );
-}
+      }
+    }
 
-@media (max-width: 1100px) {
+    /* JOBS BOARD */
+    .jobs-board-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
 
-  .jobs-board-grid {
-    grid-template-columns:
-      repeat(
-        2,
-        minmax(0, 1fr)
-      );
-  }
+    @media (max-width: 1100px) {
+      .jobs-board-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
 
-}
-
-@media (max-width: 700px) {
-
-  .jobs-board-grid {
-    grid-template-columns:
-      1fr;
-  }
-
-}
+    @media (max-width: 700px) {
+      .jobs-board-grid {
+        grid-template-columns: 1fr;
       }
     }
   </style>
@@ -959,19 +948,6 @@
 
 </div>
 
-
-          <div class="card">
-            <h3>
-              LEADS
-            </h3>
-
-            <div
-              id="leadJobs"
-              class="jobs-column"
-            ></div>
-          </div>
-
-        </div>
 
       </section>
 
@@ -1858,6 +1834,13 @@
   <script
     type="module"
     src="./js/contacts.js"
+  ></script>
+
+
+  <!-- JOBS BOARD -->
+  <script
+    type="module"
+    src="./js/jobs-panel.js"
   ></script>
 
 
