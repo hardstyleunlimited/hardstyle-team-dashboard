@@ -193,6 +193,14 @@ dialog::backdrop{background:rgba(0,0,0,.65)}
             <h2>UPCOMING</h2><p class="sub">Four weeks • Sunday through Saturday • tasks colored by assignee.</p>
             <div class="legend"><span><i class="dot" style="background:var(--max)"></i>Max</span><span><i class="dot" style="background:var(--jordan)"></i>Jordan</span><span><i class="dot" style="background:var(--connor)"></i>Connor</span></div>
             <div class="calendar-wrap" style="margin-top:12px"><div class="week-head"><div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div></div><div id="calendar" class="calendar"></div></div>
+
+            <!-- CLICKED JOB / TASK / FIGHT DETAILS -->
+            <div
+              id="calendarDetailPanel"
+              style="margin-top:16px;display:none;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px"
+            >
+              <div id="calendarDetailContent"></div>
+            </div>
           </section>
         </div>
 
@@ -523,6 +531,9 @@ renderCalendar();renderJobs();renderFights();renderContacts();renderPeopleResult
 </script>
 
   <script type="module" src="./js/top-priorities.js"></script>
+
+  <!-- UPCOMING CALENDAR DATABASE -->
+  <script type="module" src="./js/calendar.js"></script>
 
   <!-- SUPABASE AUTH -->
   <script type="module" src="./js/auth.js"></script>
