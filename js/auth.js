@@ -1,103 +1,407 @@
 import { supabase } from './supabase.js';
 
-const authGate = document.getElementById('authGate');
-const loginForm = document.getElementById('loginForm');
-const loginEmail = document.getElementById('loginEmail');
-const loginPassword = document.getElementById('loginPassword');
-const loginButton = document.getElementById('loginButton');
-const loginError = document.getElementById('loginError');
-const signOutBtn = document.getElementById('signOutBtn');
-const authUser = document.getElementById('authUser');
-const authUserName = document.getElementById('authUserName');
 
-async function showSignedIn(user) {
-  authGate.style.display = 'none';
-  authUser.style.display = 'flex';
+// =========================
+// ELEMENTS
+// =========================
 
-  const { data: profile, error } = await supabase
-    .from('profiles')
-    .select('full_name, email')
-    .eq('id', user.id)
-    .maybeSingle();
+const loginScreen =
+  document.getElementById('loginScreen');
 
-  if (error) {
-    console.error('Profile lookup error:', error);
+const dashboardApp =
+  document.getElementById('dashboardApp');
+
+const loginEmail =
+  document.getElementById('loginEmail');
+
+const loginPassword =
+  document.getElementById('loginPassword');
+
+const loginBtn =
+  document.getElementById('loginBtn');
+
+const loginMessage =
+  document.getElementById('loginMessage');
+
+const logoutBtn =
+  document.getElementById('logoutBtn');
+
+
+// =========================
+// SHOW LOGGED OUT
+// =========================
+
+function showLoggedOut() {
+
+  if (loginScreen) {
+    loginScreen.style.display = 'flex';
   }
 
-  authUserName.textContent =
-    profile?.full_name ||
-    profile?.email ||
-    user.email ||
-    'Team Member';
+  if (dashboardApp) {
+    dashboardApp.style.display = 'none';
+  }
+
+  if (loginPassword) {
+    loginPassword.value = '';
+  }
+
 }
 
-function showSignedOut() {
-  authGate.style.display = 'flex';
-  authUser.style.display = 'none';
-  authUserName.textContent = '';
-  loginPassword.value = '';
+
+// =========================
+// SHOW LOGGED IN
+// =========================
+
+async function showLoggedIn(user) {
+
+  if (loginScreen) {
+    loginScreen.style.display = 'none';
+  }
+
+  if (dashboardApp) {
+    dashboardApp.style.display = 'block';
+  }
+
+
+  console.log(
+    'Logged in user:',
+    user.email
+  );
+
+
+  // Refresh dashboard modules
+  // after authentication.
+
+  if (
+    typeof window.refreshHardstyleCalendar ===
+    'function'
+  ) {
+
+    await window
+      .refreshHardstyleCalendar();
+
+  }
+
+
+  if (
+    typeof window.refreshHardstyleContacts ===
+    'function'
+  ) {
+
+    await window
+      .refreshHardstyleContacts();
+
+  }
+
 }
 
-loginForm.addEventListener('submit', async (event) => {
-  event.preventDefault();
 
-  loginError.textContent = '';
-  loginButton.disabled = true;
-  loginButton.textContent = 'Signing In...';
+// =========================
+// LOGIN
+// =========================
 
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email: loginEmail.value.trim(),
-    password: loginPassword.value
-  });
+async function login() {
 
-  loginButton.disabled = false;
-  loginButton.textContent = 'Sign In';
+  const email =
+    loginEmail.value
+      .trim();
 
-  if (error) {
-    console.error('Login error:', error);
-    loginError.textContent = error.message;
+  const password =
+    loginPassword.value;
+
+
+  if (!email) {
+
+    loginMessage.textContent =
+      'Please enter your email.';
+
     return;
   }
 
-  if (data.user) {
-    await showSignedIn(data.user);
-  }
-});
 
-signOutBtn.addEventListener('click', async () => {
-  const { error } = await supabase.auth.signOut();
+  if (!password) {
+
+    loginMessage.textContent =
+      'Please enter your password.';
+
+    return;
+  }
+
+
+  loginBtn.disabled =
+    true;
+
+  loginBtn.textContent =
+    'Logging In...';
+
+  loginMessage.textContent =
+    '';
+
+
+  try {
+
+    const {
+      data,
+      error
+    } =
+      await supabase.auth
+        .signInWithPassword({
+
+          email:
+            email,
+
+          password:
+            password
+
+        });
+
+
+    if (error) {
+      throw error;
+    }
+
+
+    if (!data.user) {
+
+      throw new Error(
+        'Login failed.'
+      );
+
+    }
+
+
+    console.log(
+      'Login successful:',
+      data.user.email
+    );
+
+
+    await showLoggedIn(
+      data.user
+    );
+
+
+  } catch (error) {
+
+    console.error(
+      'Login error:',
+      error
+    );
+
+
+    loginMessage.textContent =
+      error.message ||
+      'Unable to log in.';
+
+
+  } finally {
+
+    loginBtn.disabled =
+      false;
+
+    loginBtn.textContent =
+      'Log In';
+
+  }
+
+}
+
+
+// =========================
+// LOG OUT
+// =========================
+
+async function logout() {
+
+  try {
+
+    const {
+      error
+    } =
+      await supabase.auth
+        .signOut();
+
+
+    if (error) {
+      throw error;
+    }
+
+
+    showLoggedOut();
+
+
+  } catch (error) {
+
+    console.error(
+      'Logout error:',
+      error
+    );
+
+    alert(
+      error.message ||
+      'Unable to log out.'
+    );
+
+  }
+
+}
+
+
+// =========================
+// BUTTON EVENTS
+// =========================
+
+loginBtn
+  ?.addEventListener(
+    'click',
+    login
+  );
+
+
+logoutBtn
+  ?.addEventListener(
+    'click',
+    logout
+  );
+
+
+// Allow ENTER to log in
+
+loginPassword
+  ?.addEventListener(
+    'keydown',
+    (event) => {
+
+      if (
+        event.key ===
+        'Enter'
+      ) {
+
+        login();
+
+      }
+
+    }
+  );
+
+
+loginEmail
+  ?.addEventListener(
+    'keydown',
+    (event) => {
+
+      if (
+        event.key ===
+        'Enter'
+      ) {
+
+        login();
+
+      }
+
+    }
+  );
+
+
+// =========================
+// CHECK EXISTING SESSION
+// =========================
+
+async function checkSession() {
+
+  const {
+    data: {
+      session
+    },
+    error
+  } =
+    await supabase.auth
+      .getSession();
+
 
   if (error) {
-    console.error('Sign out error:', error);
-    alert(error.message);
+
+    console.error(
+      'Session check error:',
+      error
+    );
+
+    showLoggedOut();
+
+    return;
+
   }
-});
 
-const {
-  data: { session },
-  error: sessionError
-} = await supabase.auth.getSession();
 
-if (sessionError) {
-  console.error('Session error:', sessionError);
+  if (
+    session?.user
+  ) {
+
+    console.log(
+      'Existing session:',
+      session.user.email
+    );
+
+
+    await showLoggedIn(
+      session.user
+    );
+
+
+  } else {
+
+    showLoggedOut();
+
+  }
+
 }
 
-if (session?.user) {
-  await showSignedIn(session.user);
-} else {
-  showSignedOut();
-}
 
-supabase.auth.onAuthStateChange((event, session) => {
-  console.log('Auth event:', event);
+// =========================
+// WATCH AUTH CHANGES
+// =========================
 
-  if (event === 'SIGNED_OUT' || !session) {
-    showSignedOut();
-  }
+supabase.auth
+  .onAuthStateChange(
+    async (
+      event,
+      session
+    ) => {
 
-  if (event === 'SIGNED_IN' && session?.user) {
-    setTimeout(() => {
-      showSignedIn(session.user);
-    }, 0);
-  }
-});
+      console.log(
+        'Auth event:',
+        event
+      );
+
+
+      if (
+        event ===
+        'SIGNED_OUT'
+      ) {
+
+        showLoggedOut();
+
+        return;
+
+      }
+
+
+      if (
+        session?.user
+      ) {
+
+        await showLoggedIn(
+          session.user
+        );
+
+      }
+
+    }
+  );
+
+
+// =========================
+// START
+// =========================
+
+checkSession();
