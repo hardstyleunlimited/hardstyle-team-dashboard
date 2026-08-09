@@ -535,6 +535,34 @@
 
       main {
         padding: 12px;
+        .jobs-board-grid {
+  grid-template-columns:
+    repeat(
+      4,
+      minmax(0, 1fr)
+    );
+}
+
+@media (max-width: 1100px) {
+
+  .jobs-board-grid {
+    grid-template-columns:
+      repeat(
+        2,
+        minmax(0, 1fr)
+      );
+  }
+
+}
+
+@media (max-width: 700px) {
+
+  .jobs-board-grid {
+    grid-template-columns:
+      1fr;
+  }
+
+}
       }
     }
   </style>
@@ -868,30 +896,58 @@
         </div>
 
 
-        <div class="grid three-col">
+        <div
+  class="grid jobs-board-grid"
+>
 
-          <div class="card">
-            <h3>
-              PAID &amp; IN WORK
-            </h3>
+  <div class="card">
+    <h3>
+      PAID &amp; IN WORK
+    </h3>
 
-            <div
-              id="paidJobs"
-              class="jobs-column"
-            ></div>
-          </div>
+    <div
+      id="paidJobs"
+      class="jobs-column"
+    ></div>
+  </div>
 
 
-          <div class="card">
-            <h3>
-              NEED DESIGN
-            </h3>
+  <div class="card">
+    <h3>
+      NEED DESIGN
+    </h3>
 
-            <div
-              id="designJobs"
-              class="jobs-column"
-            ></div>
-          </div>
+    <div
+      id="designJobs"
+      class="jobs-column"
+    ></div>
+  </div>
+
+
+  <div class="card">
+    <h3>
+      LEADS
+    </h3>
+
+    <div
+      id="leadJobs"
+      class="jobs-column"
+    ></div>
+  </div>
+
+
+  <div class="card">
+    <h3>
+      EVENTS
+    </h3>
+
+    <div
+      id="eventJobs"
+      class="jobs-column"
+    ></div>
+  </div>
+
+</div>
 
 
           <div class="card">
@@ -1219,23 +1275,27 @@
 
           <select id="jStatus">
 
-            <option value="paid_in_work">
-              Paid &amp; In Work
-            </option>
+  <option value="paid_in_work">
+    Paid &amp; In Work
+  </option>
 
-            <option value="need_design">
-              Need Design
-            </option>
+  <option value="need_design">
+    Need Design
+  </option>
 
-            <option value="leads">
-              Leads
-            </option>
+  <option value="leads">
+    Leads
+  </option>
 
-            <option value="complete">
-              Complete
-            </option>
+  <option value="events">
+    Events
+  </option>
 
-          </select>
+  <option value="complete">
+    Complete
+  </option>
+
+</select>
 
         </div>
 

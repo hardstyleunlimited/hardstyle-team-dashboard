@@ -1,20 +1,16 @@
 import { supabase } from './supabase.js';
 
-
 const paidJobs =
-  document.getElementById(
-    'paidJobs'
-  );
+  document.getElementById('paidJobs');
 
 const designJobs =
-  document.getElementById(
-    'designJobs'
-  );
+  document.getElementById('designJobs');
 
 const leadJobs =
-  document.getElementById(
-    'leadJobs'
-  );
+  document.getElementById('leadJobs');
+
+const eventJobs =
+  document.getElementById('eventJobs');
 
 
 const ownerColors = {
@@ -24,18 +20,12 @@ const ownerColors = {
 };
 
 
-let eventJobs = null;
-
-
 /* =========================
    HELPERS
 ========================= */
 
 function esc(value) {
-
-  return String(
-    value ?? ''
-  ).replace(
+  return String(value ?? '').replace(
     /[&<>"']/g,
     char => ({
       '&': '&amp;',
@@ -45,314 +35,80 @@ function esc(value) {
       "'": '&#39;'
     }[char])
   );
-
 }
 
 
 function formatDate(value) {
-
   if (!value) {
     return 'No due date';
   }
 
-
   return new Date(
-    `${value}T12:00:00`
+    `${String(value).slice(0, 10)}T12:00:00`
   ).toLocaleDateString(
     'en-US',
     {
       month: 'short',
-      day: 'numeric'
+      day: 'numeric',
+      year: 'numeric'
     }
   );
-
 }
 
 
 /* =========================
-   CREATE EVENTS COLUMN
+   SORTING
 ========================= */
 
-function ensureEventsColumn() {
-
-  if (
-    document.getElementById(
-      'eventJobs'
-    )
-  ) {
-
-    eventJobs =
-      document.getElementById(
-        'eventJobs'
-      );
-
-    return;
-  }
-
-
-  const leadCard =
-    leadJobs?.closest(
-      '.card'
-    );
-
-
-  const jobsGrid =
-    leadCard?.parentElement;
-
-
-  if (!jobsGrid) {
-    return;
-  }
-
-
-  jobsGrid.classList.add(
-    'jobs-board-grid'
-  );
-
-
-  const eventCard =
-    document.createElement(
-      'div'
-    );
-
-
-  eventCard.className =
-    'card';
-
-
-  eventCard.innerHTML = `
-    <h3>
-      EVENTS
-    </h3>
-
-    <div
-      id="eventJobs"
-      class="jobs-column"
-    ></div>
-  `;
-
-
-  jobsGrid.appendChild(
-    eventCard
-  );
-
-
-  eventJobs =
-    document.getElementById(
-      'eventJobs'
-    );
-
-
-  // Inject responsive 4-column layout.
-  if (
-    !document.getElementById(
-      'jobsBoardStyles'
-    )
-  ) {
-
-    const style =
-      document.createElement(
-        'style'
-      );
-
-
-    style.id =
-      'jobsBoardStyles';
-
-
-    style.textContent = `
-
-      .jobs-board-grid {
-        grid-template-columns:
-          repeat(
-            4,
-            minmax(0, 1fr)
-          ) !important;
-      }
-
-
-      @media (
-        max-width: 1000px
-      ) {
-
-        .jobs-board-grid {
-          grid-template-columns:
-            repeat(
-              2,
-              minmax(0, 1fr)
-            ) !important;
-        }
-
-      }
-
-
-      @media (
-        max-width: 650px
-      ) {
-
-        .jobs-board-grid {
-          grid-template-columns:
-            1fr !important;
-        }
-
-      }
-
-    `;
-
-
-    document.head.appendChild(
-      style
-    );
-
-  }
-
-}
-
-
-/* =========================
-   ADD EVENTS TO JOB FORM
-========================= */
-
-function ensureEventStatusOption() {
-
-  const statusSelect =
-    document.getElementById(
-      'jStatus'
-    );
-
-
-  if (!statusSelect) {
-    return;
-  }
-
-
-  const alreadyExists =
-    [
-      ...statusSelect.options
-    ].some(
-      option =>
-        option.value ===
-        'events'
-    );
-
-
-  if (alreadyExists) {
-    return;
-  }
-
-
-  const option =
-    document.createElement(
-      'option'
-    );
-
-
-  option.value =
-    'events';
-
-
-  option.textContent =
-    'Events';
-
-
-  const completeOption =
-    [
-      ...statusSelect.options
-    ].find(
-      item =>
-        item.value ===
-        'complete'
-    );
-
-
-  if (completeOption) {
-
-    statusSelect.insertBefore(
-      option,
-      completeOption
-    );
-
-  } else {
-
-    statusSelect.appendChild(
-      option
-    );
-
-  }
-
-}
-
-
-/* =========================
-   SORT JOBS
-========================= */
-
-function sortJobs(
-  jobs
-) {
-
-  return jobs.sort(
+function sortJobs(jobs) {
+  return [...jobs].sort(
     (a, b) => {
 
-      // Importance first:
-      // 5 → 1
-
       const importanceA =
-        Number(
-          a.importance ?? 3
-        );
-
+        Number(a.importance ?? 3);
 
       const importanceB =
-        Number(
-          b.importance ?? 3
-        );
+        Number(b.importance ?? 3);
 
 
+      // Higher importance first
       if (
         importanceA !==
         importanceB
       ) {
-
         return (
           importanceB -
           importanceA
         );
-
       }
 
 
-      // Then nearest due date.
-
+      // Earlier due date next
       if (
         a.due_date &&
         b.due_date
       ) {
 
         const dateCompare =
-          a.due_date.localeCompare(
-            b.due_date
-          );
+          String(a.due_date)
+            .localeCompare(
+              String(b.due_date)
+            );
 
-
-        if (
-          dateCompare !== 0
-        ) {
-
+        if (dateCompare !== 0) {
           return dateCompare;
-
         }
 
       }
 
 
+      // Jobs with a date before
+      // jobs without a date
       if (
         a.due_date &&
         !b.due_date
       ) {
-
         return -1;
-
       }
 
 
@@ -360,25 +116,21 @@ function sortJobs(
         !a.due_date &&
         b.due_date
       ) {
-
         return 1;
-
       }
 
 
-      // Finally alphabetically.
-
+      // Final fallback
       return String(
-        a.name
+        a.name ?? ''
       ).localeCompare(
         String(
-          b.name
+          b.name ?? ''
         )
       );
 
     }
   );
-
 }
 
 
@@ -401,6 +153,7 @@ function jobCard(
   return `
     <div
       class="job"
+      data-job-id="${job.id}"
       style="
         border-left:
           5px solid
@@ -419,10 +172,8 @@ function jobCard(
           margin-top:5px;
         "
       >
-
         Importance
         ${job.importance ?? 3}/5
-
       </div>
 
 
@@ -430,17 +181,15 @@ function jobCard(
         class="muted"
         style="
           font-size:12px;
-          margin-top:5px;
+          margin-top:6px;
         "
       >
-
         ${
           esc(
             job.contacts?.name ||
             'No contact'
           )
         }
-
       </div>
 
 
@@ -451,10 +200,8 @@ function jobCard(
           margin-top:3px;
         "
       >
-
         Assigned:
         ${esc(ownerName)}
-
       </div>
 
 
@@ -465,7 +212,6 @@ function jobCard(
           margin-top:3px;
         "
       >
-
         Due:
         ${
           esc(
@@ -474,13 +220,11 @@ function jobCard(
             )
           )
         }
-
       </div>
 
 
       ${
         job.notes
-
           ? `
               <div
                 class="muted"
@@ -492,13 +236,11 @@ function jobCard(
                 ${esc(job.notes)}
               </div>
             `
-
           : ''
       }
 
     </div>
   `;
-
 }
 
 
@@ -517,15 +259,11 @@ function renderColumn(
   }
 
 
-  const sorted =
-    sortJobs(
-      [...jobs]
-    );
+  const sortedJobs =
+    sortJobs(jobs);
 
 
-  if (
-    !sorted.length
-  ) {
+  if (!sortedJobs.length) {
 
     element.innerHTML = `
       <div class="muted">
@@ -538,7 +276,7 @@ function renderColumn(
 
 
   element.innerHTML =
-    sorted
+    sortedJobs
       .map(
         job => {
 
@@ -557,26 +295,31 @@ function renderColumn(
         }
       )
       .join('');
-
 }
 
 
 /* =========================
-   LOAD JOBS FROM SUPABASE
+   LOAD JOBS
 ========================= */
 
 export async function refreshJobsPanel() {
 
-  ensureEventsColumn();
-
-  ensureEventStatusOption();
-
-
   const {
-    data: { session }
+    data: { session },
+    error: sessionError
   } =
     await supabase.auth
       .getSession();
+
+
+  if (sessionError) {
+    console.error(
+      'Jobs session error:',
+      sessionError
+    );
+
+    return;
+  }
 
 
   if (!session?.user) {
@@ -601,6 +344,7 @@ export async function refreshJobsPanel() {
           importance,
           due_date,
           notes,
+          show_on_calendar,
           created_at,
 
           contacts (
@@ -608,7 +352,6 @@ export async function refreshJobsPanel() {
             name
           )
         `),
-
 
       supabase
         .from('profiles')
@@ -621,9 +364,7 @@ export async function refreshJobsPanel() {
     ]);
 
 
-  if (
-    jobsResult.error
-  ) {
+  if (jobsResult.error) {
 
     console.error(
       'Jobs panel error:',
@@ -631,35 +372,48 @@ export async function refreshJobsPanel() {
     );
 
 
+    const message = `
+      <div class="muted">
+        Could not load jobs:
+        ${
+          esc(
+            jobsResult
+              .error
+              .message
+          )
+        }
+      </div>
+    `;
+
+
     if (paidJobs) {
-
-      paidJobs.innerHTML = `
-        <div class="muted">
-          Could not load jobs:
-          ${
-            esc(
-              jobsResult
-                .error
-                .message
-            )
-          }
-        </div>
-      `;
-
+      paidJobs.innerHTML =
+        message;
     }
 
+    if (designJobs) {
+      designJobs.innerHTML =
+        message;
+    }
+
+    if (leadJobs) {
+      leadJobs.innerHTML =
+        message;
+    }
+
+    if (eventJobs) {
+      eventJobs.innerHTML =
+        message;
+    }
 
     return;
-
   }
 
 
-  if (
-    profilesResult.error
-  ) {
+  if (profilesResult.error) {
 
     console.error(
-      'Profile load error:',
+      'Profiles error:',
       profilesResult.error
     );
 
@@ -748,16 +502,36 @@ export async function refreshJobsPanel() {
     events,
     profiles
   );
-
 }
 
 
 /* =========================
-   GLOBAL REFRESH
+   GLOBAL REFRESH FUNCTION
 ========================= */
 
 window.refreshHardstyleJobs =
   refreshJobsPanel;
+
+
+/* =========================
+   AUTO REFRESH EVENT
+========================= */
+
+window.addEventListener(
+  'hardstyle:data-changed',
+  async event => {
+
+    if (
+      event.detail?.type ===
+      'job'
+    ) {
+
+      await refreshJobsPanel();
+
+    }
+
+  }
+);
 
 
 /* =========================
@@ -766,11 +540,6 @@ window.refreshHardstyleJobs =
 
 async function startJobsPanel() {
 
-  ensureEventsColumn();
-
-  ensureEventStatusOption();
-
-
   const {
     data: { session }
   } =
@@ -778,9 +547,7 @@ async function startJobsPanel() {
       .getSession();
 
 
-  if (
-    session?.user
-  ) {
+  if (session?.user) {
 
     await refreshJobsPanel();
 
@@ -795,8 +562,7 @@ async function startJobsPanel() {
       ) => {
 
         if (
-          event ===
-          'SIGNED_IN' &&
+          event === 'SIGNED_IN' &&
           session?.user
         ) {
 
@@ -810,7 +576,6 @@ async function startJobsPanel() {
 
       }
     );
-
 }
 
 
