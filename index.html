@@ -194,7 +194,6 @@ dialog::backdrop{background:rgba(0,0,0,.65)}
             <div class="legend"><span><i class="dot" style="background:var(--max)"></i>Max</span><span><i class="dot" style="background:var(--jordan)"></i>Jordan</span><span><i class="dot" style="background:var(--connor)"></i>Connor</span></div>
             <div class="calendar-wrap" style="margin-top:12px"><div class="week-head"><div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div></div><div id="calendar" class="calendar"></div></div>
 
-            <!-- CLICKED JOB / TASK / FIGHT DETAILS -->
             <div
               id="calendarDetailPanel"
               style="margin-top:16px;display:none;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px"
@@ -374,17 +373,6 @@ fighters:[
 function fmt(v){return new Date(v+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 
-function renderCalendar(){
- const start=new Date('2026-08-02T12:00:00'),cal=document.getElementById('calendar');cal.innerHTML='';
- for(let i=0;i<28;i++){
-   const d=new Date(start);d.setDate(start.getDate()+i);
-   const iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-   const cell=document.createElement('div');cell.className='day';
-   const due=jobs.filter(j=>j.due===iso).sort((a,b)=>b.importance-a.importance);
-   cell.innerHTML='<div class="date">'+(d.getMonth()+1)+'/'+d.getDate()+'</div>'+due.map(j=>'<div class="cal-task" style="border-left-color:'+colors[j.owner]+'"><b>'+esc(j.name)+'</b><br><small>'+esc(j.owner)+' • P'+j.importance+'</small></div>').join('');
-   cal.appendChild(cell);
- }
-}
 function jobHTML(j){return '<div class="job"><div class="jobtop"><div><b>'+esc(j.name)+'</b><br><small>'+esc(j.person)+'</small></div><span class="importance">Importance '+j.importance+'/5</span></div><div style="margin-top:8px"><small>'+esc(j.owner)+' • Due '+fmt(j.due)+'</small></div></div>'}
 function renderJobs(){
  const sorted=[...jobs].sort((a,b)=>b.importance-a.importance || a.due.localeCompare(b.due));
@@ -527,7 +515,7 @@ function renderTaskResults(){
 taskSearchBtn.addEventListener('click',renderTaskResults);
 taskName.addEventListener('keydown',e=>{if(e.key==='Enter')renderTaskResults()});
 
-renderCalendar();renderJobs();renderFights();renderContacts();renderPeopleResults();renderTaskResults();
+renderJobs();renderFights();renderContacts();renderPeopleResults();renderTaskResults();
 </script>
 
   <script type="module" src="./js/top-priorities.js"></script>
