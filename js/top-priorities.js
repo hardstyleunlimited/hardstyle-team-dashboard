@@ -1,178 +1,394 @@
 import { supabase } from './supabase.js';
 
-const editor = document.getElementById('topFive');
-const saveButton = document.getElementById('saveTopFiveBtn');
-const status = document.getElementById('topFiveSaveStatus');
+// Supports both the original IDs and the newer index.html IDs.
+const editor =
+  document.getElementById('topFiveEditor') ||
+  document.getElementById('topFive');
 
-function setStatus(message, isError = false) {
+const saveButton =
+  document.getElementById('saveTopFive') ||
+  document.getElementById('saveTopFiveBtn');
+
+const status =
+  document.getElementById('topFiveStatus') ||
+  document.getElementById('topFiveSaveStatus');
+
+
+function setStatus(message, error = false) {
+  if (!status) return;
+
   status.textContent = message;
-  status.style.color = isError ? '#ff8b8b' : '';
+  status.style.color =
+    error ? '#ff8b8b' : '';
 }
 
-async function waitForSession() {
-  const {
-    data: { session }
-  } = await supabase.auth.getSession();
 
-  if (session?.user) {
-    return session;
-  }
-
-  return await new Promise((resolve) => {
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, nextSession) => {
-        if (nextSession?.user) {
-          listener.subscription.unsubscribe();
-          resolve(nextSession);
-        }
-      }
-    );
-  });
-}
-
-async function loadTopPriorities() {
-  await waitForSession();
-
-  const { data, error } = await supabase
-    .from('top_priorities')
-    .select('position, content')
-    .order('position', { ascending: true });
-
-  if (error) {
-    console.error('Top priorities load error:', error);
-    setStatus('Could not load saved priorities', true);
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    setStatus('Not saved yet');
-    return;
-  }
-
-  const priorities = new Map(
-    data.map((row) => [row.position, row.content])
-  );
-
-  const items = [];
-
-  for (let position = 1; position <= 5; position++) {
-    items.push(
-      `<li>${priorities.get(position) ?? ''}</li>`
-    );
-  }
-
-  editor.innerHTML = `<ol>${items.join('')}</ol>`;
-
-  setStatus('Loaded from database');
-}
-
-async function saveTopPriorities() {
+async function getSession() {
   const {
     data: { session },
-    error: sessionError
+    error
   } = await supabase.auth.getSession();
 
-  if (sessionError || !session?.user) {
-    setStatus('Please sign in first', true);
+  if (error) {
+    throw error;
+  }
+
+  return session;
+}
+
+
+async function loadTopPriorities() {
+  if (!editor) return;
+
+  const session =
+    await getSession();
+
+  if (!session?.user) {
     return;
   }
 
-  let items = [
-    ...editor.querySelectorAll('li')
-  ];
+  const {
+    data,
+    error
+  } = await supabase
+    .from('top_priorities')
+    .select(`
+      position,
+      content
+    `)
+    .order(
+      'position',
+      {
+        ascending: true
+      }
+    );
 
-  if (items.length > 5) {
+
+  if (error) {
+    console.error(
+      'Top 5 load error:',
+      error
+    );
+
     setStatus(
-      "Please keep Max's Top 5 to five items",
+      error.message,
       true
     );
 
     return;
   }
 
-  while (items.length < 5) {
-    let list = editor.querySelector('ol');
 
-    if (!list) {
-      list = document.createElement('ol');
+  if (!data?.length) {
 
-      const currentContent = editor.innerHTML;
-
-      editor.innerHTML = '';
-      editor.appendChild(list);
-
-      if (currentContent.trim()) {
-        const firstItem = document.createElement('li');
-        firstItem.innerHTML = currentContent;
-        list.appendChild(firstItem);
-      }
+    if (
+      !editor.innerHTML.trim()
+    ) {
+      editor.innerHTML = `
+        <ol>
+          <li></li>
+          <li></li>
+          <li></li>
+          <li></li>
+          <li></li>
+        </ol>
+      `;
     }
 
-    const li = document.createElement('li');
-    li.innerHTML = '';
-    list.appendChild(li);
-
-    items = [
-      ...editor.querySelectorAll('li')
-    ];
-  }
-
-  saveButton.disabled = true;
-  saveButton.textContent = 'Saving...';
-
-  setStatus('Saving...');
-
-  const rows = items
-    .slice(0, 5)
-    .map((item, index) => ({
-      position: index + 1,
-
-      // Saves rich-text HTML so bold,
-      // italics, colors, etc. remain.
-      content: item.innerHTML,
-
-      created_by: session.user.id,
-
-      updated_at:
-        new Date().toISOString()
-    }));
-
-  const { error } = await supabase
-    .from('top_priorities')
-    .upsert(
-      rows,
-      {
-        onConflict: 'position'
-      }
+    setStatus(
+      'No saved priorities yet.'
     );
-
-  saveButton.disabled = false;
-  saveButton.textContent = 'Save Top 5';
-
-  if (error) {
-    console.error(
-      'Top priorities save error:',
-      error
-    );
-
-    setStatus(error.message, true);
 
     return;
   }
 
-  setStatus('Saved');
+
+  const rows =
+    new Map(
+      data.map(
+        row => [
+          row.position,
+          row.content
+        ]
+      )
+    );
+
+
+  const items = [];
+
+  for (
+    let position = 1;
+    position <= 5;
+    position++
+  ) {
+
+    items.push(
+      `
+        <li>
+          ${
+            rows.get(position) ??
+            ''
+          }
+        </li>
+      `
+    );
+
+  }
+
+
+  editor.innerHTML = `
+    <ol>
+      ${items.join('')}
+    </ol>
+  `;
+
+
+  setStatus(
+    'Loaded'
+  );
 }
 
-saveButton.addEventListener(
-  'click',
-  saveTopPriorities
-);
 
-editor.addEventListener(
-  'input',
-  () => {
-    setStatus('Unsaved changes');
+function normalizeEditor() {
+  let items =
+    [
+      ...editor
+        .querySelectorAll('li')
+    ];
+
+
+  if (items.length) {
+    return items;
   }
-);
 
-loadTopPriorities();
+
+  const lines =
+    editor.innerText
+      .split('\n')
+      .map(
+        line =>
+          line.trim()
+      )
+      .filter(Boolean)
+      .slice(0, 5);
+
+
+  editor.innerHTML = `
+    <ol>
+      ${
+        lines
+          .map(
+            line =>
+              `<li>${line}</li>`
+          )
+          .join('')
+      }
+    </ol>
+  `;
+
+
+  return [
+    ...editor
+      .querySelectorAll('li')
+  ];
+}
+
+
+async function saveTopPriorities() {
+  try {
+
+    const session =
+      await getSession();
+
+
+    if (!session?.user) {
+      setStatus(
+        'Please log in first.',
+        true
+      );
+
+      return;
+    }
+
+
+    let items =
+      normalizeEditor();
+
+
+    if (items.length > 5) {
+      setStatus(
+        "MAX'S TOP 5 can only contain five items.",
+        true
+      );
+
+      return;
+    }
+
+
+    let list =
+      editor.querySelector('ol');
+
+
+    if (!list) {
+      list =
+        document.createElement(
+          'ol'
+        );
+
+      editor.appendChild(list);
+    }
+
+
+    while (
+      items.length < 5
+    ) {
+
+      const li =
+        document.createElement(
+          'li'
+        );
+
+      list.appendChild(li);
+
+      items = [
+        ...editor
+          .querySelectorAll('li')
+      ];
+
+    }
+
+
+    saveButton.disabled =
+      true;
+
+    saveButton.textContent =
+      'Saving...';
+
+    setStatus(
+      'Saving...'
+    );
+
+
+    const rows =
+      items
+        .slice(0, 5)
+        .map(
+          (item, index) => ({
+            position:
+              index + 1,
+
+            // Keeps rich-text formatting.
+            content:
+              item.innerHTML,
+
+            created_by:
+              session.user.id,
+
+            updated_at:
+              new Date()
+                .toISOString()
+          })
+        );
+
+
+    const {
+      error
+    } = await supabase
+      .from('top_priorities')
+      .upsert(
+        rows,
+        {
+          onConflict:
+            'position'
+        }
+      );
+
+
+    if (error) {
+      throw error;
+    }
+
+
+    setStatus(
+      'Saved'
+    );
+
+
+  } catch (error) {
+
+    console.error(
+      'Top 5 save error:',
+      error
+    );
+
+    setStatus(
+      error.message ||
+      'Could not save.',
+      true
+    );
+
+
+  } finally {
+
+    if (saveButton) {
+      saveButton.disabled =
+        false;
+
+      saveButton.textContent =
+        'Save';
+    }
+
+  }
+}
+
+
+saveButton
+  ?.addEventListener(
+    'click',
+    saveTopPriorities
+  );
+
+
+editor
+  ?.addEventListener(
+    'input',
+    () => {
+      setStatus(
+        'Unsaved changes'
+      );
+    }
+  );
+
+
+async function startTopFive() {
+  const session =
+    await getSession();
+
+  if (session?.user) {
+    await loadTopPriorities();
+  }
+
+
+  supabase.auth
+    .onAuthStateChange(
+      (event, session) => {
+
+        if (
+          event === 'SIGNED_IN' &&
+          session?.user
+        ) {
+
+          setTimeout(
+            () =>
+              loadTopPriorities(),
+            0
+          );
+
+        }
+
+      }
+    );
+}
+
+
+startTopFive();

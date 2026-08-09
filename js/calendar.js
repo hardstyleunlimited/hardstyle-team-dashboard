@@ -1,8 +1,20 @@
 import { supabase } from './supabase.js';
 
-const calendarEl = document.getElementById('calendar');
-const detailPanel = document.getElementById('calendarDetailPanel');
-const detailContent = document.getElementById('calendarDetailContent');
+const calendarEl =
+  document.getElementById(
+    'calendar'
+  );
+
+const detailPanel =
+  document.getElementById(
+    'calendarDetailPanel'
+  );
+
+const detailContent =
+  document.getElementById(
+    'calendarDetailContent'
+  );
+
 
 const ownerColors = {
   Max: '#2563eb',
@@ -10,79 +22,141 @@ const ownerColors = {
   Connor: '#ea580c'
 };
 
+
 let calendarRecords = [];
 
+
 function esc(value) {
-  return String(value ?? '').replace(/[&<>"']/g, (char) => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;'
-  }[char]));
+  return String(
+    value ?? ''
+  ).replace(
+    /[&<>"']/g,
+    char => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[char])
+  );
 }
 
-function formatDate(dateString) {
-  if (!dateString) return 'No date';
-
-  return new Date(`${dateString}T12:00:00`)
-    .toLocaleDateString('en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric'
-    });
-}
 
 function isoDate(date) {
   return [
     date.getFullYear(),
-    String(date.getMonth() + 1).padStart(2, '0'),
-    String(date.getDate()).padStart(2, '0')
+
+    String(
+      date.getMonth() + 1
+    ).padStart(2, '0'),
+
+    String(
+      date.getDate()
+    ).padStart(2, '0')
+
   ].join('-');
 }
 
+
+function formatDate(value) {
+  if (!value) {
+    return 'No date';
+  }
+
+  return new Date(
+    `${String(value).slice(0, 10)}T12:00:00`
+  ).toLocaleDateString(
+    'en-US',
+    {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric'
+    }
+  );
+}
+
+
 function getCalendarStart() {
-  const today = new Date();
-  today.setHours(12, 0, 0, 0);
+  const today =
+    new Date();
 
-  const start = new Date(today);
+  today.setHours(
+    12,
+    0,
+    0,
+    0
+  );
 
-  // Start on Sunday
-  start.setDate(today.getDate() - today.getDay());
+  const start =
+    new Date(today);
+
+  // Start Sunday.
+  start.setDate(
+    today.getDate() -
+    today.getDay()
+  );
 
   return start;
 }
 
+
 async function loadProfiles() {
-  const { data, error } = await supabase
+  const {
+    data,
+    error
+  } = await supabase
     .from('profiles')
-    .select('id, full_name, email');
+    .select(`
+      id,
+      full_name,
+      email
+    `);
+
 
   if (error) {
-    console.error('Profiles load error:', error);
+    console.error(
+      'Profile load error:',
+      error
+    );
+
     return new Map();
   }
 
+
   return new Map(
-    (data ?? []).map((profile) => [
-      profile.id,
-      profile.full_name ||
-      profile.email ||
-      'Team Member'
-    ])
+    (data ?? []).map(
+      profile => [
+        profile.id,
+
+        profile.full_name ||
+        profile.email ||
+        'Team Member'
+      ]
+    )
   );
 }
 
+
 async function loadCalendarData() {
+  if (!calendarEl) {
+    return;
+  }
+
+
   const {
     data: { session }
-  } = await supabase.auth.getSession();
+  } = await supabase.auth
+    .getSession();
+
 
   if (!session?.user) {
     return;
   }
 
-  const profiles = await loadProfiles();
+
+  const profiles =
+    await loadProfiles();
+
 
   const [
     jobsResult,
@@ -90,62 +164,68 @@ async function loadCalendarData() {
     fightsResult
   ] = await Promise.all([
 
-    // JOBS
     supabase
       .from('jobs')
       .select(`
         id,
         name,
-        contact_id,
         owner_id,
         status,
         importance,
         due_date,
         notes,
         show_on_calendar,
-        created_at,
+
         contacts (
           id,
           name,
           phone,
-          instagram,
-          contact_type
+          instagram
         )
       `)
-      .eq('show_on_calendar', true)
-      .not('due_date', 'is', null),
+      .eq(
+        'show_on_calendar',
+        true
+      )
+      .not(
+        'due_date',
+        'is',
+        null
+      ),
 
-    // TASKS
+
     supabase
       .from('tasks')
       .select(`
         id,
-        job_id,
         title,
         description,
         assigned_to,
         due_date,
         status,
-        completed_at,
         show_on_calendar,
-        created_at,
+
         jobs (
           id,
           name,
-          contact_id,
+
           contacts (
             id,
-            name,
-            phone,
-            instagram,
-            contact_type
+            name
           )
         )
       `)
-      .eq('show_on_calendar', true)
-      .not('due_date', 'is', null),
+      .eq(
+        'show_on_calendar',
+        true
+      )
+      .not(
+        'due_date',
+        'is',
+        null
+      ),
 
-    // FIGHTS
+
     supabase
       .from('fights')
       .select(`
@@ -158,106 +238,134 @@ async function loadCalendarData() {
         result,
         notes,
         show_on_calendar,
-        created_at,
+
         fighters (
           id,
           nickname,
-          contact_id,
+
           contacts (
             id,
             name,
             phone,
-            instagram,
-            contact_type
+            instagram
           )
         )
       `)
-      .eq('show_on_calendar', true)
-      .not('fight_date', 'is', null)
+      .eq(
+        'show_on_calendar',
+        true
+      )
+      .not(
+        'fight_date',
+        'is',
+        null
+      )
+
   ]);
+
 
   if (jobsResult.error) {
     console.error(
-      'Jobs calendar error:',
+      'Calendar jobs error:',
       jobsResult.error
     );
   }
 
+
   if (tasksResult.error) {
     console.error(
-      'Tasks calendar error:',
+      'Calendar tasks error:',
       tasksResult.error
     );
   }
 
+
   if (fightsResult.error) {
     console.error(
-      'Fights calendar error:',
+      'Calendar fights error:',
       fightsResult.error
     );
   }
 
-  const jobs = (jobsResult.data ?? []).map(
-    (job) => {
-      const ownerName =
-        profiles.get(job.owner_id) ||
-        'Unassigned';
 
-      return {
-        recordType: 'job',
-        id: job.id,
-        title: job.name,
-        date: job.due_date,
-        ownerName,
-        color:
-          ownerColors[ownerName] ||
-          '#64748b',
-        raw: job
-      };
-    }
-  );
+  const jobs =
+    (jobsResult.data ?? [])
+      .map(job => {
 
-  const tasks = (tasksResult.data ?? []).map(
-    (task) => {
-      const ownerName =
-        profiles.get(task.assigned_to) ||
-        'Unassigned';
+        const owner =
+          profiles.get(
+            job.owner_id
+          ) ||
+          'Unassigned';
 
-      return {
-        recordType: 'task',
-        id: task.id,
-        title: task.title,
-        date: task.due_date,
-        ownerName,
-        color:
-          ownerColors[ownerName] ||
-          '#64748b',
-        raw: task
-      };
-    }
-  );
+        return {
+          type: 'job',
+          id: job.id,
+          title: job.name,
+          date: job.due_date,
+          owner,
+          color:
+            ownerColors[owner] ||
+            '#64748b',
+          raw: job
+        };
 
-  const fights = (fightsResult.data ?? []).map(
-    (fight) => {
-      const fighterName =
-        fight.fighters?.contacts?.name ||
-        fight.fighters?.nickname ||
-        'Fighter';
+      });
 
-      return {
-        recordType: 'fight',
-        id: fight.id,
-        title: fighterName,
-        date: fight.fight_date,
-        ownerName: 'Fight',
 
-        // Purple so fights stand apart
-        color: '#a855f7',
+  const tasks =
+    (tasksResult.data ?? [])
+      .map(task => {
 
-        raw: fight
-      };
-    }
-  );
+        const owner =
+          profiles.get(
+            task.assigned_to
+          ) ||
+          'Unassigned';
+
+        return {
+          type: 'task',
+          id: task.id,
+          title: task.title,
+          date: task.due_date,
+          owner,
+          color:
+            ownerColors[owner] ||
+            '#64748b',
+          raw: task
+        };
+
+      });
+
+
+  const fights =
+    (fightsResult.data ?? [])
+      .map(fight => {
+
+        const fighterName =
+          fight
+            .fighters
+            ?.contacts
+            ?.name ||
+
+          fight
+            .fighters
+            ?.nickname ||
+
+          'Fighter';
+
+        return {
+          type: 'fight',
+          id: fight.id,
+          title: fighterName,
+          date: fight.fight_date,
+          owner: 'Fight',
+          color: '#a855f7',
+          raw: fight
+        };
+
+      });
+
 
   calendarRecords = [
     ...jobs,
@@ -265,302 +373,241 @@ async function loadCalendarData() {
     ...fights
   ];
 
+
   renderCalendar();
 }
 
-function sortDayRecords(records) {
-  const typeOrder = {
-    fight: 0,
-    job: 1,
-    task: 2
-  };
-
-  return [...records].sort((a, b) => {
-
-    // Jobs with higher importance first
-    if (
-      a.recordType === 'job' &&
-      b.recordType === 'job'
-    ) {
-      const difference =
-        (b.raw.importance ?? 0) -
-        (a.raw.importance ?? 0);
-
-      if (difference !== 0) {
-        return difference;
-      }
-    }
-
-    return (
-      typeOrder[a.recordType] -
-      typeOrder[b.recordType]
-    );
-  });
-}
-
-function calendarItem(record) {
-  const typeLabel =
-    record.recordType.toUpperCase();
-
-  let secondary = record.ownerName;
-
-  if (record.recordType === 'job') {
-    secondary +=
-      ` • P${record.raw.importance ?? 3}`;
-  }
-
-  if (record.recordType === 'fight') {
-    secondary =
-      record.raw.promotion ||
-      record.raw.event_name ||
-      'FIGHT';
-  }
-
-  return `
-    <button
-      type="button"
-      class="calendar-db-item"
-      data-calendar-type="${record.recordType}"
-      data-calendar-id="${record.id}"
-
-      style="
-        display:block;
-        width:100%;
-        margin:5px 0;
-        padding:7px;
-        text-align:left;
-        color:inherit;
-        background:var(--card);
-        border:1px solid var(--border);
-        border-left:5px solid ${record.color};
-        border-radius:8px;
-        cursor:pointer;
-      "
-    >
-      <div
-        style="
-          font-weight:700;
-          font-size:12px;
-        "
-      >
-        ${esc(record.title)}
-      </div>
-
-      <div
-        style="
-          font-size:10px;
-          color:var(--muted);
-          margin-top:2px;
-        "
-      >
-        ${esc(typeLabel)}
-        •
-        ${esc(secondary)}
-      </div>
-    </button>
-  `;
-}
 
 function renderCalendar() {
   if (!calendarEl) {
-    console.error(
-      'Calendar element #calendar was not found.'
-    );
-
     return;
   }
 
-  const start = getCalendarStart();
 
-  calendarEl.innerHTML = '';
+  calendarEl.innerHTML =
+    '';
 
-  // 4 weeks x 7 days
+
+  const start =
+    getCalendarStart();
+
+
   for (
-    let dayIndex = 0;
-    dayIndex < 28;
-    dayIndex++
+    let index = 0;
+    index < 28;
+    index++
   ) {
-    const date = new Date(start);
+
+    const date =
+      new Date(start);
 
     date.setDate(
-      start.getDate() + dayIndex
+      start.getDate() +
+      index
     );
 
-    const dateKey = isoDate(date);
+
+    const key =
+      isoDate(date);
+
 
     const records =
-      sortDayRecords(
-        calendarRecords.filter(
-          (record) =>
-            record.date === dateKey
+      calendarRecords
+        .filter(
+          record =>
+            record.date ===
+            key
         )
+        .sort(
+          (a, b) => {
+
+            if (
+              a.type === 'job' &&
+              b.type === 'job'
+            ) {
+              return (
+                b.raw.importance -
+                a.raw.importance
+              );
+            }
+
+            return 0;
+          }
+        );
+
+
+    const cell =
+      document.createElement(
+        'div'
       );
 
-    const day =
-      document.createElement('div');
 
-    day.className = 'day';
+    cell.className =
+      'day';
 
-    day.innerHTML = `
+
+    cell.innerHTML = `
       <div class="date">
-        ${date.getMonth() + 1}/${date.getDate()}
+        ${
+          date.getMonth() + 1
+        }/${date.getDate()}
       </div>
 
       ${
         records
-          .map(calendarItem)
+          .map(
+            record => `
+              <button
+                type="button"
+                class="calendar-record"
+
+                data-type="${
+                  record.type
+                }"
+
+                data-id="${
+                  record.id
+                }"
+
+                style="
+                  width:100%;
+                  display:block;
+                  text-align:left;
+                  margin:5px 0;
+                  padding:7px;
+                  color:inherit;
+                  background:var(--card);
+                  border:1px solid var(--border);
+                  border-left:5px solid ${record.color};
+                  border-radius:8px;
+                "
+              >
+
+                <strong>
+                  ${esc(record.title)}
+                </strong>
+
+                <div
+                  class="muted"
+                  style="font-size:10px"
+                >
+                  ${record.type.toUpperCase()}
+                  •
+                  ${esc(record.owner)}
+                </div>
+
+              </button>
+            `
+          )
           .join('')
       }
     `;
 
-    calendarEl.appendChild(day);
+
+    calendarEl
+      .appendChild(cell);
   }
+
 
   calendarEl
     .querySelectorAll(
-      '.calendar-db-item'
+      '.calendar-record'
     )
-    .forEach((button) => {
+    .forEach(button => {
 
       button.addEventListener(
         'click',
         () => {
+
           openCalendarRecord(
-            button.dataset.calendarType,
+            button.dataset.type,
+
             Number(
-              button.dataset.calendarId
+              button.dataset.id
             )
           );
+
         }
       );
 
     });
 }
 
-function renderRelatedList(
-  title,
-  items,
-  renderItem
-) {
-  if (!items || items.length === 0) {
-    return `
-      <div style="margin-top:20px">
-        <h4
-          style="
-            margin:0 0 8px
-          "
-        >
-          ${esc(title)}
-        </h4>
 
-        <div class="muted">
-          None linked yet.
-        </div>
-      </div>
-    `;
+async function openCalendarRecord(
+  type,
+  id
+) {
+  if (
+    !detailPanel ||
+    !detailContent
+  ) {
+    return;
   }
 
-  return `
-    <div style="margin-top:20px">
 
-      <h4
-        style="
-          margin:0 0 8px
-        "
-      >
-        ${esc(title)}
-      </h4>
-
-      <div
-        style="
-          display:grid;
-          gap:8px;
-        "
-      >
-
-        ${
-          items.map(
-            (item) => `
-              <div
-                style="
-                  background:var(--panel);
-                  border:1px solid var(--border);
-                  border-radius:10px;
-                  padding:10px;
-                "
-              >
-                ${renderItem(item)}
-              </div>
-            `
-          ).join('')
-        }
-
-      </div>
-    </div>
-  `;
-}
-
-async function loadJobDetail(record) {
-  const job = record.raw;
-
-  const { data: tasks } = await supabase
-    .from('tasks')
-    .select(`
-      id,
-      title,
-      description,
-      assigned_to,
-      due_date,
-      status,
-      completed_at
-    `)
-    .eq('job_id', job.id)
-    .order(
-      'due_date',
-      { ascending: true }
+  const record =
+    calendarRecords.find(
+      item =>
+        item.type === type &&
+        item.id === id
     );
 
-  const { data: designs } = await supabase
-    .from('designs')
-    .select(`
-      id,
-      title,
-      design_type,
-      notes,
-      created_at
-    `)
-    .eq('job_id', job.id)
-    .order(
-      'created_at',
-      { ascending: false }
-    );
 
-  const { data: uploads } = await supabase
-    .from('uploads')
-    .select(`
-      id,
-      category,
-      file_name,
-      file_url,
-      file_type,
-      created_at
-    `)
-    .eq('job_id', job.id)
-    .order(
-      'created_at',
-      { ascending: false }
-    );
+  if (!record) {
+    return;
+  }
 
-  return `
-    <div class="profile-head">
 
-      <div>
+  const data =
+    record.raw;
 
-        <h3 style="margin:0">
-          ${esc(job.name)}
-        </h3>
 
-        <div class="profile-meta">
+  detailPanel.style.display =
+    'block';
+
+
+  if (type === 'job') {
+
+    const {
+      data: tasks
+    } = await supabase
+      .from('tasks')
+      .select(`
+        id,
+        title,
+        status,
+        due_date
+      `)
+      .eq(
+        'job_id',
+        data.id
+      );
+
+
+    const {
+      data: designs
+    } = await supabase
+      .from('designs')
+      .select(`
+        id,
+        title,
+        design_type
+      `)
+      .eq(
+        'job_id',
+        data.id
+      );
+
+
+    detailContent.innerHTML = `
+      <div class="profile-head">
+
+        <div>
+
+          <h3>
+            ${esc(data.name)}
+          </h3>
 
           <span class="badge">
             JOB
@@ -568,761 +615,244 @@ async function loadJobDetail(record) {
 
           <span class="badge">
             Importance
-            ${job.importance ?? 3}/5
+            ${data.importance}/5
           </span>
 
           <span class="badge">
-            ${esc(job.status)}
+            ${esc(data.status)}
           </span>
 
         </div>
 
+        <button
+          id="closeCalendarDetail"
+          class="btn"
+        >
+          Close
+        </button>
+
       </div>
 
-      <button
-        id="closeCalendarDetail"
-        class="btn"
-        type="button"
-      >
-        Close
-      </button>
 
-    </div>
+      <p>
+        <strong>Customer:</strong>
+        ${
+          esc(
+            data.contacts?.name ||
+            'Unassigned'
+          )
+        }
+      </p>
 
-    <div
-      style="
-        display:grid;
-        grid-template-columns:
-          repeat(
-            auto-fit,
-            minmax(180px,1fr)
-          );
-        gap:12px;
-        margin-top:18px;
-      "
-    >
+      <p>
+        <strong>Assigned:</strong>
+        ${esc(record.owner)}
+      </p>
 
-      <div>
-        <div class="muted">
-          Customer
-        </div>
+      <p>
+        <strong>Due:</strong>
+        ${esc(formatDate(data.due_date))}
+      </p>
 
-        <strong>
-          ${
-            esc(
-              job.contacts?.name ||
-              'No customer linked'
-            )
-          }
-        </strong>
-      </div>
+      <p>
+        <strong>Notes:</strong>
+        ${esc(data.notes || 'None')}
+      </p>
 
-      <div>
-        <div class="muted">
-          Assigned
-        </div>
 
-        <strong>
-          ${esc(record.ownerName)}
-        </strong>
-      </div>
+      <h4>Tasks</h4>
 
-      <div>
-        <div class="muted">
-          Due
-        </div>
+      ${
+        tasks?.length
+          ? tasks
+              .map(
+                task => `
+                  <div class="card">
+                    <strong>
+                      ${esc(task.title)}
+                    </strong>
 
-        <strong>
-          ${esc(
-            formatDate(job.due_date)
-          )}
-        </strong>
-      </div>
-
-      <div>
-        <div class="muted">
-          Phone
-        </div>
-
-        <strong>
-          ${esc(
-            job.contacts?.phone ||
-            '—'
-          )}
-        </strong>
-      </div>
-
-      <div>
-        <div class="muted">
-          Instagram
-        </div>
-
-        <strong>
-          ${esc(
-            job.contacts?.instagram ||
-            '—'
-          )}
-        </strong>
-      </div>
-
-    </div>
-
-    <div style="margin-top:18px">
-
-      <div class="muted">
-        Notes
-      </div>
-
-      <div>
-        ${esc(job.notes || 'No notes')}
-      </div>
-
-    </div>
-
-    ${
-      renderRelatedList(
-        'TASKS',
-        tasks,
-        (task) => `
-          <strong>
-            ${esc(task.title)}
-          </strong>
-
-          <div class="muted">
-            ${esc(task.status)}
-            •
-            ${esc(
-              formatDate(task.due_date)
-            )}
-          </div>
-        `
-      )
-    }
-
-    ${
-      renderRelatedList(
-        'DESIGNS',
-        designs,
-        (design) => `
-          <strong>
-            ${esc(design.title)}
-          </strong>
-
-          <div class="muted">
-            ${
-              esc(
-                design.design_type ||
-                'Design'
+                    <div class="muted">
+                      ${esc(task.status)}
+                      •
+                      ${esc(formatDate(task.due_date))}
+                    </div>
+                  </div>
+                `
               )
-            }
-          </div>
-        `
-      )
-    }
+              .join('')
+          : '<div class="muted">No tasks linked.</div>'
+      }
 
-    ${
-      renderRelatedList(
-        'FILES',
-        uploads,
-        (upload) => `
-          <strong>
-            ${esc(upload.file_name)}
-          </strong>
 
-          <div class="muted">
-            ${esc(upload.category)}
-          </div>
-        `
-      )
-    }
+      <h4 style="margin-top:16px">
+        Designs
+      </h4>
 
-    <div
-      style="
-        display:flex;
-        gap:8px;
-        flex-wrap:wrap;
-        margin-top:20px;
-      "
-    >
+      ${
+        designs?.length
+          ? designs
+              .map(
+                design => `
+                  <div class="card">
+                    <strong>
+                      ${esc(design.title)}
+                    </strong>
+
+                    <div class="muted">
+                      ${
+                        esc(
+                          design.design_type ||
+                          'Design'
+                        )
+                      }
+                    </div>
+                  </div>
+                `
+              )
+              .join('')
+          : '<div class="muted">No designs linked.</div>'
+      }
+
 
       <button
         id="removeCalendarItem"
         class="btn"
-        type="button"
-        data-record-type="job"
-        data-record-id="${job.id}"
+        style="margin-top:18px"
       >
         Remove from Calendar
       </button>
+    `;
 
-    </div>
-  `;
-}
+  }
 
-async function loadTaskDetail(record) {
-  const task = record.raw;
 
-  return `
-    <div class="profile-head">
+  if (type === 'task') {
 
-      <div>
+    detailContent.innerHTML = `
+      <div class="profile-head">
 
-        <h3 style="margin:0">
-          ${esc(task.title)}
-        </h3>
-
-        <div class="profile-meta">
+        <div>
+          <h3>
+            ${esc(data.title)}
+          </h3>
 
           <span class="badge">
             TASK
           </span>
-
-          <span class="badge">
-            ${esc(task.status)}
-          </span>
-
         </div>
 
-      </div>
-
-      <button
-        id="closeCalendarDetail"
-        class="btn"
-        type="button"
-      >
-        Close
-      </button>
-
-    </div>
-
-    <div
-      style="
-        display:grid;
-        grid-template-columns:
-          repeat(
-            auto-fit,
-            minmax(180px,1fr)
-          );
-        gap:12px;
-        margin-top:18px;
-      "
-    >
-
-      <div>
-
-        <div class="muted">
-          Assigned
-        </div>
-
-        <strong>
-          ${esc(record.ownerName)}
-        </strong>
+        <button
+          id="closeCalendarDetail"
+          class="btn"
+        >
+          Close
+        </button>
 
       </div>
 
-      <div>
+      <p>
+        <strong>Assigned:</strong>
+        ${esc(record.owner)}
+      </p>
 
-        <div class="muted">
-          Due
-        </div>
+      <p>
+        <strong>Due:</strong>
+        ${esc(formatDate(data.due_date))}
+      </p>
 
-        <strong>
-          ${esc(
-            formatDate(task.due_date)
-          )}
-        </strong>
-
-      </div>
-
-      <div>
-
-        <div class="muted">
-          Job
-        </div>
-
-        <strong>
-          ${
-            esc(
-              task.jobs?.name ||
-              'No job linked'
-            )
-          }
-        </strong>
-
-      </div>
-
-      <div>
-
-        <div class="muted">
-          Customer
-        </div>
-
-        <strong>
-          ${
-            esc(
-              task.jobs?.contacts?.name ||
-              '—'
-            )
-          }
-        </strong>
-
-      </div>
-
-    </div>
-
-    <div style="margin-top:18px">
-
-      <div class="muted">
-        Description
-      </div>
-
-      <div>
+      <p>
+        <strong>Job:</strong>
         ${
           esc(
-            task.description ||
-            'No description'
+            data.jobs?.name ||
+            'None'
           )
         }
-      </div>
+      </p>
 
-    </div>
-
-    <div
-      style="
-        display:flex;
-        gap:8px;
-        flex-wrap:wrap;
-        margin-top:20px;
-      "
-    >
+      <p>
+        <strong>Description:</strong>
+        ${
+          esc(
+            data.description ||
+            'None'
+          )
+        }
+      </p>
 
       <button
         id="removeCalendarItem"
         class="btn"
-        type="button"
-        data-record-type="task"
-        data-record-id="${task.id}"
       >
         Remove from Calendar
       </button>
+    `;
 
-    </div>
-  `;
-}
+  }
 
-async function loadFightDetail(record) {
-  const fight = record.raw;
 
-  const fighter =
-    fight.fighters;
+  if (type === 'fight') {
 
-  const contact =
-    fighter?.contacts;
+    detailContent.innerHTML = `
+      <div class="profile-head">
 
-  const { data: designs } =
-    contact?.id
-      ? await supabase
-          .from('designs')
-          .select(`
-            id,
-            title,
-            design_type,
-            notes,
-            created_at
-          `)
-          .eq(
-            'contact_id',
-            contact.id
-          )
-          .order(
-            'created_at',
-            { ascending: false }
-          )
-      : { data: [] };
+        <div>
 
-  const { data: jobs } =
-    contact?.id
-      ? await supabase
-          .from('jobs')
-          .select(`
-            id,
-            name,
-            status,
-            importance,
-            due_date
-          `)
-          .eq(
-            'contact_id',
-            contact.id
-          )
-          .order(
-            'created_at',
-            { ascending: false }
-          )
-      : { data: [] };
-
-  const {
-    data: previousFights
-  } = await supabase
-    .from('fights')
-    .select(`
-      id,
-      opponent,
-      promotion,
-      event_name,
-      fight_date,
-      result
-    `)
-    .eq(
-      'fighter_id',
-      fight.fighter_id
-    )
-    .neq(
-      'id',
-      fight.id
-    )
-    .order(
-      'fight_date',
-      { ascending: false }
-    );
-
-  return `
-    <div class="profile-head">
-
-      <div>
-
-        <h3 style="margin:0">
-          ${
-            esc(
-              contact?.name ||
-              fighter?.nickname ||
-              'Fighter'
-            )
-          }
-        </h3>
-
-        <div class="profile-meta">
+          <h3>
+            ${esc(record.title)}
+          </h3>
 
           <span class="badge">
             FIGHT
           </span>
 
-          ${
-            fighter?.nickname
-              ? `
-                <span class="badge">
-                  ${esc(fighter.nickname)}
-                </span>
-              `
-              : ''
-          }
-
         </div>
 
-      </div>
-
-      <button
-        id="closeCalendarDetail"
-        class="btn"
-        type="button"
-      >
-        Close
-      </button>
-
-    </div>
-
-    <div
-      style="
-        display:grid;
-        grid-template-columns:
-          repeat(
-            auto-fit,
-            minmax(180px,1fr)
-          );
-        gap:12px;
-        margin-top:18px;
-      "
-    >
-
-      <div>
-
-        <div class="muted">
-          Fight Date
-        </div>
-
-        <strong>
-          ${esc(
-            formatDate(
-              fight.fight_date
-            )
-          )}
-        </strong>
+        <button
+          id="closeCalendarDetail"
+          class="btn"
+        >
+          Close
+        </button>
 
       </div>
 
-      <div>
+      <p>
+        <strong>Date:</strong>
+        ${esc(formatDate(data.fight_date))}
+      </p>
 
-        <div class="muted">
-          Opponent
-        </div>
+      <p>
+        <strong>Opponent:</strong>
+        ${esc(data.opponent || 'TBD')}
+      </p>
 
-        <strong>
-          ${esc(
-            fight.opponent ||
-            'TBD'
-          )}
-        </strong>
+      <p>
+        <strong>Promotion:</strong>
+        ${esc(data.promotion || 'None')}
+      </p>
 
-      </div>
+      <p>
+        <strong>Event:</strong>
+        ${esc(data.event_name || 'None')}
+      </p>
 
-      <div>
-
-        <div class="muted">
-          Promotion
-        </div>
-
-        <strong>
-          ${esc(
-            fight.promotion ||
-            '—'
-          )}
-        </strong>
-
-      </div>
-
-      <div>
-
-        <div class="muted">
-          Event
-        </div>
-
-        <strong>
-          ${esc(
-            fight.event_name ||
-            '—'
-          )}
-        </strong>
-
-      </div>
-
-      <div>
-
-        <div class="muted">
-          Phone
-        </div>
-
-        <strong>
-          ${esc(
-            contact?.phone ||
-            '—'
-          )}
-        </strong>
-
-      </div>
-
-      <div>
-
-        <div class="muted">
-          Instagram
-        </div>
-
-        <strong>
-          ${esc(
-            contact?.instagram ||
-            '—'
-          )}
-        </strong>
-
-      </div>
-
-    </div>
-
-    <div style="margin-top:18px">
-
-      <div class="muted">
-        Notes
-      </div>
-
-      <div>
-        ${esc(
-          fight.notes ||
-          'No notes'
-        )}
-      </div>
-
-    </div>
-
-    ${
-      renderRelatedList(
-        'RELATED JOBS',
-        jobs,
-        (job) => `
-          <strong>
-            ${esc(job.name)}
-          </strong>
-
-          <div class="muted">
-            ${esc(job.status)}
-            • Importance
-            ${job.importance ?? 3}/5
-
-            ${
-              job.due_date
-                ? ` • ${esc(
-                    formatDate(
-                      job.due_date
-                    )
-                  )}`
-                : ''
-            }
-          </div>
-        `
-      )
-    }
-
-    ${
-      renderRelatedList(
-        'DESIGNS',
-        designs,
-        (design) => `
-          <strong>
-            ${esc(design.title)}
-          </strong>
-
-          <div class="muted">
-            ${
-              esc(
-                design.design_type ||
-                'Design'
-              )
-            }
-          </div>
-        `
-      )
-    }
-
-    ${
-      renderRelatedList(
-        'PREVIOUS FIGHTS',
-        previousFights,
-        (previousFight) => `
-          <strong>
-            ${
-              esc(
-                previousFight.opponent ||
-                'Opponent TBD'
-              )
-            }
-          </strong>
-
-          <div class="muted">
-
-            ${
-              esc(
-                previousFight.promotion ||
-                ''
-              )
-            }
-
-            ${
-              previousFight.fight_date
-                ? ` • ${esc(
-                    formatDate(
-                      previousFight.fight_date
-                    )
-                  )}`
-                : ''
-            }
-
-            ${
-              previousFight.result
-                ? ` • ${esc(
-                    previousFight.result
-                  )}`
-                : ''
-            }
-
-          </div>
-        `
-      )
-    }
-
-    <div
-      style="
-        display:flex;
-        gap:8px;
-        flex-wrap:wrap;
-        margin-top:20px;
-      "
-    >
+      <p>
+        <strong>Notes:</strong>
+        ${esc(data.notes || 'None')}
+      </p>
 
       <button
         id="removeCalendarItem"
         class="btn"
-        type="button"
-        data-record-type="fight"
-        data-record-id="${fight.id}"
       >
         Remove from Calendar
       </button>
+    `;
 
-    </div>
-  `;
-}
-
-async function openCalendarRecord(
-  recordType,
-  id
-) {
-  const record =
-    calendarRecords.find(
-      (item) =>
-        item.recordType ===
-          recordType &&
-        item.id === id
-    );
-
-  if (
-    !record ||
-    !detailPanel ||
-    !detailContent
-  ) {
-    return;
   }
 
-  detailPanel.style.display =
-    'block';
-
-  detailContent.innerHTML = `
-    <div class="muted">
-      Loading details...
-    </div>
-  `;
-
-  let html = '';
-
-  if (recordType === 'job') {
-    html =
-      await loadJobDetail(
-        record
-      );
-  }
-
-  if (recordType === 'task') {
-    html =
-      await loadTaskDetail(
-        record
-      );
-  }
-
-  if (recordType === 'fight') {
-    html =
-      await loadFightDetail(
-        record
-      );
-  }
-
-  detailContent.innerHTML = html;
 
   document
     .getElementById(
@@ -1331,10 +861,13 @@ async function openCalendarRecord(
     ?.addEventListener(
       'click',
       () => {
+
         detailPanel.style.display =
           'none';
+
       }
     );
+
 
   document
     .getElementById(
@@ -1342,8 +875,16 @@ async function openCalendarRecord(
     )
     ?.addEventListener(
       'click',
-      removeFromCalendar
+      async () => {
+
+        await removeFromCalendar(
+          type,
+          id
+        );
+
+      }
     );
+
 
   detailPanel.scrollIntoView({
     behavior: 'smooth',
@@ -1351,75 +892,86 @@ async function openCalendarRecord(
   });
 }
 
+
 async function removeFromCalendar(
-  event
+  type,
+  id
 ) {
-  const button =
-    event.currentTarget;
-
-  const recordType =
-    button.dataset.recordType;
-
-  const id =
-    Number(
-      button.dataset.recordId
-    );
-
   const tableMap = {
     job: 'jobs',
     task: 'tasks',
     fight: 'fights'
   };
 
+
   const table =
-    tableMap[recordType];
+    tableMap[type];
+
 
   if (!table) {
     return;
   }
 
+
   const confirmed =
-    window.confirm(
-      'Remove this item from the Upcoming calendar? The underlying record will NOT be deleted.'
+    confirm(
+      'Remove from Upcoming? The underlying record will stay saved.'
     );
+
 
   if (!confirmed) {
     return;
   }
 
-  button.disabled = true;
 
-  button.textContent =
-    'Removing...';
-
-  const { error } = await supabase
+  const {
+    error
+  } = await supabase
     .from(table)
     .update({
-      show_on_calendar: false
+      show_on_calendar:
+        false
     })
-    .eq('id', id);
+    .eq(
+      'id',
+      id
+    );
+
 
   if (error) {
+
     console.error(
-      'Calendar removal error:',
+      'Calendar remove error:',
       error
     );
 
-    button.disabled = false;
-
-    button.textContent =
-      'Remove from Calendar';
-
-    alert(error.message);
+    alert(
+      error.message
+    );
 
     return;
   }
 
+
   detailPanel.style.display =
     'none';
 
+
+  await refreshCalendar();
+}
+
+
+// THIS IS THE IMPORTANT PART.
+// Other modules can import it directly.
+export async function refreshCalendar() {
   await loadCalendarData();
 }
+
+
+// Keep window support too.
+window.refreshHardstyleCalendar =
+  refreshCalendar;
+
 
 async function startCalendar() {
   const {
@@ -1427,45 +979,35 @@ async function startCalendar() {
   } = await supabase.auth
     .getSession();
 
-  if (session?.user) {
-    await loadCalendarData();
 
-    return;
+  if (session?.user) {
+    await refreshCalendar();
   }
 
-  const { data: authListener } =
-    supabase.auth
-      .onAuthStateChange(
-        async (
-          _event,
-          newSession
-        ) => {
 
-          if (newSession?.user) {
-            await loadCalendarData();
-          }
+  supabase.auth
+    .onAuthStateChange(
+      (
+        event,
+        session
+      ) => {
 
-          if (!newSession) {
-            calendarRecords = [];
+        if (
+          event === 'SIGNED_IN' &&
+          session?.user
+        ) {
 
-            renderCalendar();
+          setTimeout(
+            () =>
+              refreshCalendar(),
+            0
+          );
 
-            if (detailPanel) {
-              detailPanel.style.display =
-                'none';
-            }
-          }
         }
-      );
 
-  window.addEventListener(
-    'beforeunload',
-    () => {
-      authListener
-        .subscription
-        .unsubscribe();
-    }
-  );
+      }
+    );
 }
+
 
 startCalendar();

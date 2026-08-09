@@ -1,58 +1,90 @@
 import { supabase } from './supabase.js';
 
 const addContactBtn =
-  document.getElementById('addContactBtn');
+  document.getElementById(
+    'addContactBtn'
+  );
 
 const contactDialog =
-  document.getElementById('contactDialog');
+  document.getElementById(
+    'contactDialog'
+  );
 
 const saveContact =
-  document.getElementById('saveContact');
+  document.getElementById(
+    'saveContact'
+  );
 
 const cName =
-  document.getElementById('cName');
+  document.getElementById(
+    'cName'
+  );
 
 const cPhone =
-  document.getElementById('cPhone');
+  document.getElementById(
+    'cPhone'
+  );
 
 const cInstagram =
-  document.getElementById('cInstagram');
+  document.getElementById(
+    'cInstagram'
+  );
 
 const cType =
-  document.getElementById('cType');
+  document.getElementById(
+    'cType'
+  );
 
 const cPerson =
-  document.getElementById('cPerson');
+  document.getElementById(
+    'cPerson'
+  );
 
 const contactFormStatus =
-  document.getElementById('contactFormStatus');
+  document.getElementById(
+    'contactFormStatus'
+  );
 
 const contactSearch =
-  document.getElementById('contactSearch');
+  document.getElementById(
+    'contactSearch'
+  );
+
+const globalSearch =
+  document.getElementById(
+    'globalSearch'
+  );
 
 const businessContacts =
-  document.getElementById('businessContacts');
+  document.getElementById(
+    'businessContacts'
+  );
 
 const fighterContacts =
-  document.getElementById('fighterContacts');
+  document.getElementById(
+    'fighterContacts'
+  );
 
 const contactDetailPanel =
-  document.getElementById('contactDetailPanel');
+  document.getElementById(
+    'contactDetailPanel'
+  );
 
 const contactDetailContent =
-  document.getElementById('contactDetailContent');
+  document.getElementById(
+    'contactDetailContent'
+  );
 
-let contactsCache = [];
 
+let contacts = [];
 
-/* =========================
-   HELPERS
-========================= */
 
 function esc(value) {
-  return String(value ?? '').replace(
+  return String(
+    value ?? ''
+  ).replace(
     /[&<>"']/g,
-    (char) => ({
+    char => ({
       '&': '&amp;',
       '<': '&lt;',
       '>': '&gt;',
@@ -60,67 +92,6 @@ function esc(value) {
       "'": '&#39;'
     }[char])
   );
-}
-
-
-function formatDate(value) {
-  if (!value) {
-    return 'No date';
-  }
-
-  const datePart =
-    String(value).slice(0, 10);
-
-  return new Date(
-    `${datePart}T12:00:00`
-  ).toLocaleDateString(
-    'en-US',
-    {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    }
-  );
-}
-
-
-function setStatus(
-  message,
-  isError = false
-) {
-  if (!contactFormStatus) {
-    return;
-  }
-
-  contactFormStatus.textContent =
-    message;
-
-  contactFormStatus.style.color =
-    isError
-      ? '#ff8b8b'
-      : '';
-}
-
-
-async function requireSession() {
-  const {
-    data: { session },
-    error
-  } =
-    await supabase.auth
-      .getSession();
-
-  if (error) {
-    throw error;
-  }
-
-  if (!session?.user) {
-    throw new Error(
-      'Please sign in first.'
-    );
-  }
-
-  return session;
 }
 
 
@@ -140,11 +111,118 @@ function normalizeInstagram(
 }
 
 
-/* =========================
-   CONTACT CARDS
-========================= */
+function renderContacts(
+  search = ''
+) {
+  const query =
+    search
+      .trim()
+      .toLowerCase();
 
-function contactCard(
+
+  const filtered =
+    contacts.filter(
+      contact => {
+
+        if (!query) {
+          return true;
+        }
+
+        return [
+          contact.name,
+          contact.phone,
+          contact.instagram,
+          contact.notes,
+          contact.contact_type
+        ].some(
+          value =>
+            String(
+              value ?? ''
+            )
+              .toLowerCase()
+              .includes(query)
+        );
+
+      }
+    );
+
+
+  const businesses =
+    filtered.filter(
+      contact =>
+        contact.contact_type ===
+        'business'
+    );
+
+
+  const fighters =
+    filtered.filter(
+      contact =>
+        contact.contact_type ===
+        'fighter'
+    );
+
+
+  businessContacts.innerHTML =
+    businesses.length
+
+      ? businesses
+          .map(
+            contact =>
+              contactHTML(contact)
+          )
+          .join('')
+
+      : `
+          <div class="muted">
+            No matching businesses.
+          </div>
+        `;
+
+
+  fighterContacts.innerHTML =
+    fighters.length
+
+      ? fighters
+          .map(
+            contact =>
+              contactHTML(contact)
+          )
+          .join('')
+
+      : `
+          <div class="muted">
+            No matching fighters.
+          </div>
+        `;
+
+
+  document
+    .querySelectorAll(
+      '.contact-open'
+    )
+    .forEach(
+      button => {
+
+        button.addEventListener(
+          'click',
+          () => {
+
+            openContact(
+              Number(
+                button.dataset.id
+              )
+            );
+
+          }
+        );
+
+      }
+    );
+}
+
+
+function contactHTML(
   contact
 ) {
   return `
@@ -152,35 +230,33 @@ function contactCard(
 
       <button
         type="button"
-        class="dbContactName"
-        data-contact-id="${contact.id}"
+        class="contact-open"
+
+        data-id="${
+          contact.id
+        }"
 
         style="
+          color:var(--text);
           background:none;
           border:0;
-          color:var(--text);
           padding:0;
           font-weight:700;
-          text-align:left;
           text-decoration:underline;
           text-underline-offset:3px;
-          cursor:pointer;
         "
       >
         ${esc(contact.name)}
       </button>
 
-
       <div
-        style="
-          margin-top:5px;
-          font-size:13px;
-        "
+        class="muted"
+        style="font-size:12px;margin-top:4px"
       >
 
         ${
           contact.phone
-            ? `<span>${esc(contact.phone)}</span>`
+            ? esc(contact.phone)
             : ''
         }
 
@@ -193,155 +269,23 @@ function contactCard(
 
         ${
           contact.instagram
-            ? `<span>${esc(contact.instagram)}</span>`
+            ? esc(contact.instagram)
             : ''
         }
 
       </div>
-
-
-      ${
-        contact.notes
-          ? `
-            <div
-              class="muted"
-              style="
-                font-size:12px;
-                margin-top:5px;
-              "
-            >
-              ${esc(contact.notes)}
-            </div>
-          `
-          : ''
-      }
 
     </div>
   `;
 }
 
 
-/* =========================
-   RENDER CONTACTS
-========================= */
-
-function renderContacts(
-  searchText = ''
-) {
-  const query =
-    searchText
-      .trim()
-      .toLowerCase();
-
-
-  const filtered =
-    contactsCache.filter(
-      (contact) => {
-
-        if (!query) {
-          return true;
-        }
-
-        return [
-          contact.name,
-          contact.phone,
-          contact.instagram,
-          contact.notes,
-          contact.contact_type
-        ].some((value) => {
-
-          return String(
-            value ?? ''
-          )
-            .toLowerCase()
-            .includes(query);
-
-        });
-
-      }
-    );
-
-
-  const businesses =
-    filtered.filter(
-      (contact) =>
-        contact.contact_type ===
-        'business'
-    );
-
-
-  const fighters =
-    filtered.filter(
-      (contact) =>
-        contact.contact_type ===
-        'fighter'
-    );
-
-
-  if (businessContacts) {
-    businessContacts.innerHTML =
-      businesses.length
-        ? businesses
-            .map(contactCard)
-            .join('')
-        : `
-            <div class="muted">
-              No businesses found.
-            </div>
-          `;
-  }
-
-
-  if (fighterContacts) {
-    fighterContacts.innerHTML =
-      fighters.length
-        ? fighters
-            .map(contactCard)
-            .join('')
-        : `
-            <div class="muted">
-              No fighters found.
-            </div>
-          `;
-  }
-
-
-  document
-    .querySelectorAll(
-      '.dbContactName'
-    )
-    .forEach(
-      (button) => {
-
-        button.addEventListener(
-          'click',
-          () => {
-
-            openContactDetail(
-              Number(
-                button.dataset
-                  .contactId
-              )
-            );
-
-          }
-        );
-
-      }
-    );
-}
-
-
-/* =========================
-   LOAD CONTACTS
-========================= */
-
-async function loadContacts() {
+export async function refreshContacts() {
   const {
     data: { session }
-  } =
-    await supabase.auth
-      .getSession();
+  } = await supabase.auth
+    .getSession();
+
 
   if (!session?.user) {
     return;
@@ -351,55 +295,37 @@ async function loadContacts() {
   const {
     data,
     error
-  } =
-    await supabase
-      .from('contacts')
-      .select(`
-        id,
-        contact_type,
-        name,
-        phone,
-        instagram,
-        notes,
-        created_at,
-        updated_at
-      `)
-      .order(
-        'name',
-        {
-          ascending: true
-        }
-      );
+  } = await supabase
+    .from('contacts')
+    .select(`
+      id,
+      contact_type,
+      name,
+      phone,
+      instagram,
+      notes,
+      created_at,
+      updated_at
+    `)
+    .order(
+      'name',
+      {
+        ascending: true
+      }
+    );
 
 
   if (error) {
     console.error(
-      'Contacts load error:',
+      'Contact load error:',
       error
     );
-
-    if (businessContacts) {
-      businessContacts.innerHTML = `
-        <div class="muted">
-          Could not load contacts:
-          ${esc(error.message)}
-        </div>
-      `;
-    }
-
-    if (fighterContacts) {
-      fighterContacts.innerHTML = `
-        <div class="muted">
-          Could not load contacts.
-        </div>
-      `;
-    }
 
     return;
   }
 
 
-  contactsCache =
+  contacts =
     data ?? [];
 
 
@@ -407,295 +333,250 @@ async function loadContacts() {
     contactSearch?.value ||
     ''
   );
-
-
-  window.dispatchEvent(
-    new CustomEvent(
-      'hardstyle:contacts-loaded',
-      {
-        detail: {
-          contacts:
-            contactsCache
-        }
-      }
-    )
-  );
 }
 
 
-/* =========================
-   CREATE CONTACT
-========================= */
-
-async function createContact() {
-  try {
-
-    await requireSession();
+window.refreshHardstyleContacts =
+  refreshContacts;
 
 
-    const name =
-      cName.value.trim();
+contactSearch
+  ?.addEventListener(
+    'input',
+    () => {
 
-
-    if (!name) {
-      setStatus(
-        'Please enter a contact name.',
-        true
+      renderContacts(
+        contactSearch.value
       );
 
-      return;
     }
+  );
 
 
-    saveContact.disabled =
-      true;
+// BIG SEARCH BAR
+globalSearch
+  ?.addEventListener(
+    'input',
+    () => {
 
-    saveContact.textContent =
-      'Saving...';
-
-
-    setStatus(
-      'Saving contact...'
-    );
+      const query =
+        globalSearch.value;
 
 
-    const {
-      data,
-      error
-    } =
-      await supabase
-        .from('contacts')
-        .insert({
-
-          contact_type:
-            cType.value,
-
-          name:
-            name,
-
-          phone:
-            cPhone.value.trim() ||
-            null,
-
-          instagram:
-            normalizeInstagram(
-              cInstagram.value
-            ),
-
-          notes:
-            cPerson.value.trim() ||
-            null
-
-        })
-        .select(`
-          id,
-          contact_type,
-          name,
-          phone,
-          instagram,
-          notes,
-          created_at,
-          updated_at
-        `)
-        .single();
-
-
-    if (error) {
-      throw error;
-    }
-
-
-    setStatus(
-      'Contact saved.'
-    );
-
-
-    await loadContacts();
-
-
-    window.dispatchEvent(
-      new CustomEvent(
-        'hardstyle:data-changed',
-        {
-          detail: {
-            type:
-              'contact',
-
-            id:
-              data.id
-          }
-        }
-      )
-    );
-
-
-    setTimeout(
-      () => {
-
-        contactDialog.close();
-
-        resetContactForm();
-
-      },
-      250
-    );
-
-  } catch (error) {
-
-    console.error(
-      'Create contact error:',
-      error
-    );
-
-
-    setStatus(
-      error.message ||
-      'Could not save contact.',
-      true
-    );
-
-  } finally {
-
-    saveContact.disabled =
-      false;
-
-    saveContact.textContent =
-      'Add Contact';
-  }
-}
-
-
-/* =========================
-   RESET CONTACT FORM
-========================= */
-
-function resetContactForm() {
-
-  if (cName) {
-    cName.value = '';
-  }
-
-  if (cPhone) {
-    cPhone.value = '';
-  }
-
-  if (cInstagram) {
-    cInstagram.value = '';
-  }
-
-  if (cType) {
-    cType.value =
-      'business';
-  }
-
-  if (cPerson) {
-    cPerson.value = '';
-  }
-
-  setStatus('');
-}
-
-
-/* =========================
-   RELATED DATA UI
-========================= */
-
-function relatedItem(
-  title,
-  subtitle
-) {
-  return `
-    <div
-      style="
-        background:var(--panel);
-        border:
-          1px solid
-          var(--border);
-        border-radius:10px;
-        padding:10px;
-      "
-    >
-
-      <strong>
-        ${esc(title)}
-      </strong>
-
-      ${
-        subtitle
-          ? `
-            <div
-              class="muted"
-              style="
-                font-size:12px;
-                margin-top:3px;
-              "
-            >
-              ${subtitle}
-            </div>
-          `
-          : ''
+      if (contactSearch) {
+        contactSearch.value =
+          query;
       }
 
-    </div>
-  `;
-}
+
+      renderContacts(
+        query
+      );
 
 
-function relatedSection(
-  title,
-  htmlItems
-) {
-  return `
-    <div
-      style="
-        margin-top:18px;
-      "
-    >
+      if (
+        query.trim().length >= 2
+      ) {
 
-      <h4
-        style="
-          margin:0 0 8px;
-        "
-      >
-        ${esc(title)}
-      </h4>
+        document
+          .getElementById(
+            'contacts'
+          )
+          ?.scrollIntoView({
+            behavior:
+              'smooth',
+
+            block:
+              'start'
+          });
+
+      }
+
+    }
+  );
 
 
-      <div
-        style="
-          display:grid;
-          gap:8px;
-        "
-      >
+addContactBtn
+  ?.addEventListener(
+    'click',
+    () => {
 
-        ${
-          htmlItems.length
-            ? htmlItems.join('')
-            : `
-                <div class="muted">
-                  None linked yet.
-                </div>
-              `
+      contactDialog.showModal();
+
+    }
+  );
+
+
+saveContact
+  ?.addEventListener(
+    'click',
+    async () => {
+
+      try {
+
+        const name =
+          cName.value.trim();
+
+
+        if (!name) {
+          throw new Error(
+            'Enter a contact name.'
+          );
         }
 
-      </div>
 
-    </div>
-  `;
-}
+        saveContact.disabled =
+          true;
+
+        saveContact.textContent =
+          'Saving...';
 
 
-/* =========================
-   CONTACT DETAIL
-========================= */
+        const {
+          data,
+          error
+        } = await supabase
+          .from('contacts')
+          .insert({
 
-async function openContactDetail(
+            contact_type:
+              cType.value,
+
+            name,
+
+            phone:
+              cPhone.value.trim() ||
+              null,
+
+            instagram:
+              normalizeInstagram(
+                cInstagram.value
+              ),
+
+            notes:
+              cPerson.value.trim() ||
+              null
+
+          })
+          .select()
+          .single();
+
+
+        if (error) {
+          throw error;
+        }
+
+
+        // If this contact is a fighter,
+        // automatically create fighter profile.
+        if (
+          cType.value ===
+          'fighter'
+        ) {
+
+          const {
+            error:
+              fighterError
+          } = await supabase
+            .from('fighters')
+            .insert({
+
+              contact_id:
+                data.id,
+
+              nickname:
+                cPerson.value.trim() ||
+                null
+
+            });
+
+
+          if (
+            fighterError &&
+            !String(
+              fighterError.message
+            ).includes(
+              'duplicate'
+            )
+          ) {
+
+            console.error(
+              'Fighter profile error:',
+              fighterError
+            );
+
+          }
+
+        }
+
+
+        await refreshContacts();
+
+
+        if (
+          contactFormStatus
+        ) {
+          contactFormStatus.textContent =
+            'Contact saved!';
+        }
+
+
+        setTimeout(
+          () => {
+
+            contactDialog.close();
+
+            cName.value = '';
+            cPhone.value = '';
+            cInstagram.value = '';
+            cPerson.value = '';
+            cType.value =
+              'business';
+
+          },
+          250
+        );
+
+
+      } catch (error) {
+
+        console.error(
+          'Contact save error:',
+          error
+        );
+
+
+        if (
+          contactFormStatus
+        ) {
+          contactFormStatus.textContent =
+            error.message;
+
+          contactFormStatus.style.color =
+            '#ff8b8b';
+        }
+
+
+      } finally {
+
+        saveContact.disabled =
+          false;
+
+        saveContact.textContent =
+          'Add Contact';
+
+      }
+
+    }
+  );
+
+
+async function openContact(
   contactId
 ) {
-
   const contact =
-    contactsCache.find(
-      (item) =>
+    contacts.find(
+      item =>
         item.id ===
         contactId
     );
@@ -712,7 +593,7 @@ async function openContactDetail(
 
   contactDetailContent.innerHTML = `
     <div class="muted">
-      Loading contact history...
+      Loading...
     </div>
   `;
 
@@ -720,94 +601,51 @@ async function openContactDetail(
   const [
     jobsResult,
     designsResult,
-    uploadsResult,
     fighterResult
-  ] =
-    await Promise.all([
+  ] = await Promise.all([
 
-      supabase
-        .from('jobs')
-        .select(`
-          id,
-          name,
-          status,
-          importance,
-          due_date,
-          created_at
-        `)
-        .eq(
-          'contact_id',
-          contactId
-        )
-        .order(
-          'created_at',
-          {
-            ascending:
-              false
-          }
-        ),
+    supabase
+      .from('jobs')
+      .select(`
+        id,
+        name,
+        status,
+        importance,
+        due_date
+      `)
+      .eq(
+        'contact_id',
+        contactId
+      ),
 
 
-      supabase
-        .from('designs')
-        .select(`
-          id,
-          title,
-          design_type,
-          notes,
-          created_at
-        `)
-        .eq(
-          'contact_id',
-          contactId
-        )
-        .order(
-          'created_at',
-          {
-            ascending:
-              false
-          }
-        ),
+    supabase
+      .from('designs')
+      .select(`
+        id,
+        title,
+        design_type,
+        created_at
+      `)
+      .eq(
+        'contact_id',
+        contactId
+      ),
 
 
-      supabase
-        .from('uploads')
-        .select(`
-          id,
-          category,
-          file_name,
-          file_url,
-          file_type,
-          created_at
-        `)
-        .eq(
-          'contact_id',
-          contactId
-        )
-        .order(
-          'created_at',
-          {
-            ascending:
-              false
-          }
-        ),
+    supabase
+      .from('fighters')
+      .select(`
+        id,
+        nickname
+      `)
+      .eq(
+        'contact_id',
+        contactId
+      )
+      .maybeSingle()
 
-
-      supabase
-        .from('fighters')
-        .select(`
-          id,
-          nickname,
-          notes,
-          created_at
-        `)
-        .eq(
-          'contact_id',
-          contactId
-        )
-        .maybeSingle()
-
-    ]);
+  ]);
 
 
   let fights = [];
@@ -817,18 +655,15 @@ async function openContactDetail(
     fighterResult.data?.id
   ) {
 
-    const fightsResult =
+    const result =
       await supabase
         .from('fights')
         .select(`
           id,
           opponent,
           promotion,
-          event_name,
           fight_date,
-          result,
-          notes,
-          created_at
+          result
         `)
         .eq(
           'fighter_id',
@@ -837,109 +672,51 @@ async function openContactDetail(
         .order(
           'fight_date',
           {
-            ascending:
-              false
+            ascending: false
           }
         );
 
 
-    if (
-      fightsResult.error
-    ) {
-
-      console.error(
-        'Contact fights error:',
-        fightsResult.error
-      );
-
-    } else {
-
-      fights =
-        fightsResult.data ??
-        [];
-
-    }
+    fights =
+      result.data ?? [];
 
   }
 
 
-  const jobs =
-    jobsResult.data ?? [];
-
-  const designs =
-    designsResult.data ?? [];
-
-  const uploads =
-    uploadsResult.data ?? [];
-
-
   contactDetailContent.innerHTML = `
-    <div
-      class="profile-head"
-    >
+    <div class="profile-head">
 
       <div>
 
-        <h3
-          style="
-            margin:0;
-          "
-        >
+        <h3>
           ${esc(contact.name)}
         </h3>
 
-
-        <div
-          class="profile-meta"
-        >
-
-          <span
-            class="badge"
-          >
-            ${
-              contact.contact_type ===
-              'fighter'
-                ? 'Fighter'
-                : 'Business'
-            }
-          </span>
-
-
+        <span class="badge">
           ${
-            contact.phone
-              ? `
-                <span class="badge">
-                  ${esc(contact.phone)}
-                </span>
-              `
-              : ''
+            contact.contact_type ===
+            'fighter'
+              ? 'Fighter'
+              : 'Business'
           }
-
-
-          ${
-            contact.instagram
-              ? `
-                <span class="badge">
-                  ${esc(contact.instagram)}
-                </span>
-              `
-              : ''
-          }
-
-        </div>
-
+        </span>
 
         ${
-          contact.notes
+          contact.phone
             ? `
-              <div
-                class="muted"
-                style="
-                  margin-top:8px;
-                "
-              >
-                ${esc(contact.notes)}
-              </div>
+              <span class="badge">
+                ${esc(contact.phone)}
+              </span>
+            `
+            : ''
+        }
+
+        ${
+          contact.instagram
+            ? `
+              <span class="badge">
+                ${esc(contact.instagram)}
+              </span>
             `
             : ''
         }
@@ -948,9 +725,8 @@ async function openContactDetail(
 
 
       <button
-        id="closeDbContactDetail"
+        id="closeContactDetails"
         class="btn"
-        type="button"
       >
         Close
       </button>
@@ -958,367 +734,201 @@ async function openContactDetail(
     </div>
 
 
-    <div
-      style="
-        margin-top:14px;
-      "
-      class="muted"
-    >
-      Added
-      ${
-        esc(
-          formatDate(
-            contact.created_at
-          )
-        )
-      }
-    </div>
+    ${
+      contact.notes
+        ? `
+          <p>
+            ${esc(contact.notes)}
+          </p>
+        `
+        : ''
+    }
 
+
+    <h4>
+      Jobs / Orders
+    </h4>
 
     ${
-      relatedSection(
-        'JOBS / ORDERS',
+      jobsResult.data?.length
 
-        jobs.map(
-          (job) => {
+        ? jobsResult.data
+            .map(
+              job => `
+                <div class="card">
 
-            return relatedItem(
-              job.name,
+                  <strong>
+                    ${esc(job.name)}
+                  </strong>
 
+                  <div class="muted">
+                    ${esc(job.status)}
+                    •
+                    Importance
+                    ${job.importance}/5
+                  </div>
+
+                </div>
               `
-                ${esc(job.status)}
+            )
+            .join('')
 
-                • Importance
-                ${
-                  job.importance ??
-                  3
-                }/5
-
-                ${
-                  job.due_date
-                    ? `
-                      • Due
-                      ${
-                        esc(
-                          formatDate(
-                            job.due_date
-                          )
-                        )
-                      }
-                    `
-                    : ''
-                }
-              `
-            );
-
-          }
-        )
-      )
+        : `
+            <div class="muted">
+              No jobs yet.
+            </div>
+          `
     }
 
 
     ${
-      relatedSection(
-        'FIGHTS',
+      contact.contact_type ===
+      'fighter'
 
-        fights.map(
-          (fight) => {
+        ? `
+            <h4 style="margin-top:16px">
+              Fights
+            </h4>
 
-            return relatedItem(
+            ${
+              fights.length
 
-              fight.opponent
-                ? `vs ${fight.opponent}`
-                : 'Opponent TBD',
+                ? fights
+                    .map(
+                      fight => `
+                        <div class="card">
 
-              `
-                ${
-                  fight.promotion
-                    ? `
-                      ${esc(fight.promotion)}
-                      •
-                    `
-                    : ''
-                }
+                          <strong>
+                            vs
+                            ${
+                              esc(
+                                fight.opponent ||
+                                'TBD'
+                              )
+                            }
+                          </strong>
 
-                ${
-                  esc(
-                    formatDate(
-                      fight.fight_date
+                          <div class="muted">
+                            ${
+                              esc(
+                                fight.promotion ||
+                                ''
+                              )
+                            }
+                            •
+                            ${
+                              esc(
+                                fight.fight_date
+                              )
+                            }
+                          </div>
+
+                        </div>
+                      `
                     )
-                  )
-                }
+                    .join('')
 
-                ${
-                  fight.result
-                    ? `
-                      •
-                      ${esc(fight.result)}
-                    `
-                    : ''
-                }
-              `
-            );
+                : `
+                    <div class="muted">
+                      No fights yet.
+                    </div>
+                  `
+            }
+          `
 
-          }
-        )
-      )
+        : ''
     }
 
+
+    <h4 style="margin-top:16px">
+      Designs
+    </h4>
 
     ${
-      relatedSection(
-        'DESIGNS',
+      designsResult.data?.length
 
-        designs.map(
-          (design) => {
+        ? designsResult.data
+            .map(
+              design => `
+                <div class="card">
 
-            return relatedItem(
-              design.title,
+                  <strong>
+                    ${esc(design.title)}
+                  </strong>
 
+                  <div class="muted">
+                    ${
+                      esc(
+                        design.design_type ||
+                        'Design'
+                      )
+                    }
+                  </div>
+
+                </div>
               `
-                ${
-                  esc(
-                    design.design_type ||
-                    'Design'
-                  )
-                }
+            )
+            .join('')
 
-                •
-
-                ${
-                  esc(
-                    formatDate(
-                      design.created_at
-                    )
-                  )
-                }
-              `
-            );
-
-          }
-        )
-      )
+        : `
+            <div class="muted">
+              No designs yet.
+            </div>
+          `
     }
-
-
-    ${
-      relatedSection(
-        'FILES',
-
-        uploads.map(
-          (upload) => {
-
-            return relatedItem(
-              upload.file_name,
-
-              `
-                ${
-                  esc(
-                    upload.category
-                  )
-                }
-
-                •
-
-                ${
-                  esc(
-                    formatDate(
-                      upload.created_at
-                    )
-                  )
-                }
-              `
-            );
-
-          }
-        )
-      )
-    }
-
   `;
 
 
   document
     .getElementById(
-      'closeDbContactDetail'
+      'closeContactDetails'
     )
     ?.addEventListener(
       'click',
       () => {
 
-        contactDetailPanel
-          .style
-          .display =
+        contactDetailPanel.style.display =
           'none';
 
       }
     );
-
-
-  contactDetailPanel
-    .scrollIntoView({
-      behavior:
-        'smooth',
-
-      block:
-        'nearest'
-    });
 }
 
-
-/* =========================
-   OPEN CONTACT DIALOG
-========================= */
-
-async function openContactDialog() {
-
-  try {
-
-    await requireSession();
-
-    resetContactForm();
-
-    contactDialog.showModal();
-
-  } catch (error) {
-
-    alert(
-      error.message
-    );
-
-  }
-
-}
-
-
-/* =========================
-   EVENTS
-========================= */
-
-addContactBtn
-  ?.addEventListener(
-    'click',
-    openContactDialog
-  );
-
-
-saveContact
-  ?.addEventListener(
-    'click',
-    createContact
-  );
-
-
-contactSearch
-  ?.addEventListener(
-    'input',
-    () => {
-
-      renderContacts(
-        contactSearch.value
-      );
-
-    }
-  );
-
-
-/* =========================
-   PUBLIC REFRESH FUNCTION
-========================= */
-
-window.refreshHardstyleContacts =
-  async function () {
-
-    await loadContacts();
-
-  };
-
-
-/* =========================
-   DATA CHANGE LISTENER
-========================= */
-
-window.addEventListener(
-  'hardstyle:data-changed',
-  async (event) => {
-
-    if (
-      event.detail?.type ===
-      'contact'
-    ) {
-
-      await loadContacts();
-
-    }
-
-  }
-);
-
-
-/* =========================
-   START CONTACTS
-========================= */
 
 async function startContacts() {
-
   const {
     data: { session }
-  } =
-    await supabase.auth
-      .getSession();
+  } = await supabase.auth
+    .getSession();
 
 
   if (session?.user) {
-
-    await loadContacts();
-
-    return;
+    await refreshContacts();
   }
 
 
   supabase.auth
     .onAuthStateChange(
-      async (
-        _event,
-        newSession
+      (
+        event,
+        session
       ) => {
 
         if (
-          newSession?.user
+          event === 'SIGNED_IN' &&
+          session?.user
         ) {
 
-          await loadContacts();
-
-        }
-
-
-        if (
-          !newSession
-        ) {
-
-          contactsCache =
-            [];
-
-
-          renderContacts();
-
-
-          if (
-            contactDetailPanel
-          ) {
-
-            contactDetailPanel
-              .style
-              .display =
-              'none';
-
-          }
+          setTimeout(
+            () =>
+              refreshContacts(),
+            0
+          );
 
         }
 
       }
     );
-
 }
 
 

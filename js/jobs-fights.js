@@ -1,58 +1,144 @@
 import { supabase } from './supabase.js';
-
-const addJobBtn = document.getElementById('addJobBtn');
-const addFightBtn = document.getElementById('addFightBtn');
-
-const jobDialog = document.getElementById('jobDialog');
-const fightDialog = document.getElementById('fightDialog');
-
-// JOB FORM
-const jName = document.getElementById('jName');
-const jContactSearch = document.getElementById('jContactSearch');
-const jContact = document.getElementById('jContact');
-const jOwner = document.getElementById('jOwner');
-const jStatus = document.getElementById('jStatus');
-const jImportance = document.getElementById('jImportance');
-const jDue = document.getElementById('jDue');
-const jNotes = document.getElementById('jNotes');
-const jShowCalendar = document.getElementById('jShowCalendar');
-const saveJob = document.getElementById('saveJob');
-const jobFormStatus = document.getElementById('jobFormStatus');
-
-// FIGHT FORM
-const fFighter = document.getElementById('fFighter');
-const fOpponent = document.getElementById('fOpponent');
-const fPromotion = document.getElementById('fPromotion');
-const fEvent = document.getElementById('fEvent');
-const fDate = document.getElementById('fDate');
-const fResult = document.getElementById('fResult');
-const fNotes = document.getElementById('fNotes');
-const fShowCalendar = document.getElementById('fShowCalendar');
-const saveFight = document.getElementById('saveFight');
-const fightFormStatus = document.getElementById('fightFormStatus');
-
-let cachedContacts = [];
+import { refreshCalendar } from './calendar.js';
 
 
-/* =========================
-   HELPERS
-========================= */
+const addJobBtn =
+  document.getElementById(
+    'addJobBtn'
+  );
 
-function setStatus(element, message, isError = false) {
-  if (!element) return;
+const addFightBtn =
+  document.getElementById(
+    'addFightBtn'
+  );
 
-  element.textContent = message;
+const jobDialog =
+  document.getElementById(
+    'jobDialog'
+  );
 
-  element.style.color = isError
-    ? '#ff8b8b'
-    : '';
-}
+const fightDialog =
+  document.getElementById(
+    'fightDialog'
+  );
 
 
-function escapeHtml(value) {
-  return String(value ?? '').replace(
+const jName =
+  document.getElementById(
+    'jName'
+  );
+
+const jContactSearch =
+  document.getElementById(
+    'jContactSearch'
+  );
+
+const jContact =
+  document.getElementById(
+    'jContact'
+  );
+
+const jOwner =
+  document.getElementById(
+    'jOwner'
+  );
+
+const jStatus =
+  document.getElementById(
+    'jStatus'
+  );
+
+const jImportance =
+  document.getElementById(
+    'jImportance'
+  );
+
+const jDue =
+  document.getElementById(
+    'jDue'
+  );
+
+const jNotes =
+  document.getElementById(
+    'jNotes'
+  );
+
+const jShowCalendar =
+  document.getElementById(
+    'jShowCalendar'
+  );
+
+const saveJob =
+  document.getElementById(
+    'saveJob'
+  );
+
+const jobFormStatus =
+  document.getElementById(
+    'jobFormStatus'
+  );
+
+
+const fFighter =
+  document.getElementById(
+    'fFighter'
+  );
+
+const fOpponent =
+  document.getElementById(
+    'fOpponent'
+  );
+
+const fPromotion =
+  document.getElementById(
+    'fPromotion'
+  );
+
+const fEvent =
+  document.getElementById(
+    'fEvent'
+  );
+
+const fDate =
+  document.getElementById(
+    'fDate'
+  );
+
+const fResult =
+  document.getElementById(
+    'fResult'
+  );
+
+const fNotes =
+  document.getElementById(
+    'fNotes'
+  );
+
+const fShowCalendar =
+  document.getElementById(
+    'fShowCalendar'
+  );
+
+const saveFight =
+  document.getElementById(
+    'saveFight'
+  );
+
+const fightFormStatus =
+  document.getElementById(
+    'fightFormStatus'
+  );
+
+
+let contacts = [];
+
+
+function esc(value) {
+  return String(
+    value ?? ''
+  ).replace(
     /[&<>"']/g,
-    (char) => ({
+    char => ({
       '&': '&amp;',
       '<': '&lt;',
       '>': '&gt;',
@@ -63,19 +149,32 @@ function escapeHtml(value) {
 }
 
 
+function setStatus(
+  element,
+  message,
+  error = false
+) {
+  if (!element) return;
+
+  element.textContent =
+    message;
+
+  element.style.color =
+    error
+      ? '#ff8b8b'
+      : '';
+}
+
+
 async function requireSession() {
   const {
-    data: { session },
-    error
-  } = await supabase.auth.getSession();
-
-  if (error) {
-    throw error;
-  }
+    data: { session }
+  } = await supabase.auth
+    .getSession();
 
   if (!session?.user) {
     throw new Error(
-      'Please sign in first.'
+      'Please log in first.'
     );
   }
 
@@ -83,71 +182,54 @@ async function requireSession() {
 }
 
 
-/* =========================
-   CONTACT SEARCH
-========================= */
+function renderContactChoices(
+  search = ''
+) {
+  const query =
+    search
+      .toLowerCase()
+      .trim();
 
-function renderContactOptions(searchText = '') {
-  if (!jContact) return;
 
-  const search = searchText
-    .trim()
-    .toLowerCase();
+  const filtered =
+    contacts.filter(
+      contact =>
 
-  const filteredContacts =
-    cachedContacts.filter((contact) => {
+        !query ||
 
-      const name =
         contact.name
-          ?.toLowerCase() || '';
+          .toLowerCase()
+          .includes(query) ||
 
-      const type =
-        contact.contact_type
-          ?.toLowerCase() || '';
-
-      return (
-        name.includes(search) ||
-        type.includes(search)
-      );
-    });
-
-  jContact.innerHTML =
-    `
-      <option value="">
-        Select contact
-      </option>
-    ` +
-    filteredContacts
-      .map((contact) => {
-
-        const typeText =
+        String(
           contact.contact_type
-            ? ` • ${escapeHtml(contact.contact_type)}`
-            : '';
+        )
+          .toLowerCase()
+          .includes(query)
+    );
 
-        return `
-          <option value="${contact.id}">
-            ${escapeHtml(contact.name)}${typeText}
-          </option>
-        `;
-      })
-      .join('');
+
+  jContact.innerHTML = `
+    <option value="">
+      Select contact
+    </option>
+
+    ${
+      filtered
+        .map(
+          contact => `
+            <option value="${contact.id}">
+              ${esc(contact.name)}
+              •
+              ${esc(contact.contact_type)}
+            </option>
+          `
+        )
+        .join('')
+    }
+  `;
 }
 
-
-jContactSearch?.addEventListener(
-  'input',
-  () => {
-    renderContactOptions(
-      jContactSearch.value
-    );
-  }
-);
-
-
-/* =========================
-   LOAD JOB OPTIONS
-========================= */
 
 async function loadJobOptions() {
   const [
@@ -162,10 +244,8 @@ async function loadJobOptions() {
         name,
         contact_type
       `)
-      .order(
-        'name',
-        { ascending: true }
-      ),
+      .order('name'),
+
 
     supabase
       .from('profiles')
@@ -174,659 +254,455 @@ async function loadJobOptions() {
         full_name,
         email
       `)
-      .order(
-        'full_name',
-        { ascending: true }
-      )
+      .order('full_name')
 
   ]);
 
+
   if (contactsResult.error) {
-    console.error(
-      'Contact options error:',
-      contactsResult.error
-    );
-
-    setStatus(
-      jobFormStatus,
-      contactsResult.error.message,
-      true
-    );
-  } else {
-    cachedContacts =
-      contactsResult.data ?? [];
-
-    renderContactOptions();
+    throw contactsResult.error;
   }
 
 
   if (profilesResult.error) {
-    console.error(
-      'Owner options error:',
-      profilesResult.error
-    );
-
-    setStatus(
-      jobFormStatus,
-      profilesResult.error.message,
-      true
-    );
-
-    return;
+    throw profilesResult.error;
   }
 
-  if (jOwner) {
-    jOwner.innerHTML =
-      `
-        <option value="">
-          Select owner
-        </option>
-      ` +
+
+  contacts =
+    contactsResult.data ??
+    [];
+
+
+  renderContactChoices();
+
+
+  jOwner.innerHTML = `
+    <option value="">
+      Select owner
+    </option>
+
+    ${
       (profilesResult.data ?? [])
-        .map((profile) => {
-
-          const displayName =
-            profile.full_name ||
-            profile.email ||
-            'Team Member';
-
-          return `
+        .map(
+          profile => `
             <option value="${profile.id}">
-              ${escapeHtml(displayName)}
+              ${
+                esc(
+                  profile.full_name ||
+                  profile.email
+                )
+              }
             </option>
-          `;
-        })
-        .join('');
-  }
+          `
+        )
+        .join('')
+    }
+  `;
 }
 
 
-/* =========================
-   LOAD FIGHTERS
-========================= */
+jContactSearch
+  ?.addEventListener(
+    'input',
+    () => {
 
-async function loadFighterOptions() {
-  const { data, error } =
-    await supabase
-      .from('fighters')
-      .select(`
-        id,
-        nickname,
-        contacts (
-          id,
-          name
-        )
-      `)
-      .order(
-        'created_at',
-        { ascending: true }
+      renderContactChoices(
+        jContactSearch.value
       );
+
+    }
+  );
+
+
+async function loadFighters() {
+  const {
+    data,
+    error
+  } = await supabase
+    .from('fighters')
+    .select(`
+      id,
+      nickname,
+
+      contacts (
+        name
+      )
+    `)
+    .order('created_at');
+
 
   if (error) {
-    console.error(
-      'Fighter options error:',
-      error
-    );
-
-    setStatus(
-      fightFormStatus,
-      error.message,
-      true
-    );
-
-    return;
+    throw error;
   }
 
-  if (!fFighter) return;
 
-  fFighter.innerHTML =
-    `
-      <option value="">
-        Select fighter
-      </option>
-    ` +
-    (data ?? [])
-      .map((fighter) => {
+  fFighter.innerHTML = `
+    <option value="">
+      Select fighter
+    </option>
 
-        const fighterName =
-          fighter.contacts?.name ||
-          fighter.nickname ||
-          `Fighter #${fighter.id}`;
+    ${
+      (data ?? [])
+        .map(
+          fighter => {
 
-        const nickname =
-          fighter.nickname &&
-          fighter.contacts?.name
-            ? ` • ${fighter.nickname}`
-            : '';
+            const name =
+              fighter.contacts?.name ||
+              fighter.nickname ||
+              `Fighter ${fighter.id}`;
 
-        return `
-          <option value="${fighter.id}">
-            ${escapeHtml(
-              fighterName + nickname
-            )}
-          </option>
-        `;
-      })
-      .join('');
-}
+            return `
+              <option value="${fighter.id}">
+                ${esc(name)}
+              </option>
+            `;
 
-
-/* =========================
-   OPEN DIALOGS
-========================= */
-
-async function openJobDialog() {
-  try {
-    await requireSession();
-
-    setStatus(
-      jobFormStatus,
-      ''
-    );
-
-    if (jContactSearch) {
-      jContactSearch.value = '';
-    }
-
-    await loadJobOptions();
-
-    jobDialog.showModal();
-
-  } catch (error) {
-    console.error(error);
-
-    alert(
-      error.message
-    );
-  }
-}
-
-
-async function openFightDialog() {
-  try {
-    await requireSession();
-
-    setStatus(
-      fightFormStatus,
-      ''
-    );
-
-    await loadFighterOptions();
-
-    fightDialog.showModal();
-
-  } catch (error) {
-    console.error(error);
-
-    alert(
-      error.message
-    );
-  }
-}
-
-
-/* =========================
-   CREATE JOB
-========================= */
-
-async function createJob() {
-  try {
-    await requireSession();
-
-    const name =
-      jName?.value.trim();
-
-    if (!name) {
-      setStatus(
-        jobFormStatus,
-        'Please enter a job name.',
-        true
-      );
-
-      return;
-    }
-
-    if (!jContact?.value) {
-      setStatus(
-        jobFormStatus,
-        'Please select a contact.',
-        true
-      );
-
-      return;
-    }
-
-    if (!jOwner?.value) {
-      setStatus(
-        jobFormStatus,
-        'Please select an owner.',
-        true
-      );
-
-      return;
-    }
-
-    if (!jDue?.value) {
-      setStatus(
-        jobFormStatus,
-        'Please select a due date.',
-        true
-      );
-
-      return;
-    }
-
-    saveJob.disabled = true;
-    saveJob.textContent =
-      'Saving...';
-
-    setStatus(
-      jobFormStatus,
-      'Saving job...'
-    );
-
-
-    const {
-      data,
-      error
-    } = await supabase
-      .from('jobs')
-      .insert({
-
-        name: name,
-
-        contact_id:
-          Number(jContact.value),
-
-        owner_id:
-          jOwner.value,
-
-        status:
-          jStatus.value,
-
-        importance:
-          Number(
-            jImportance.value
-          ),
-
-        due_date:
-          jDue.value,
-
-        notes:
-          jNotes?.value.trim() ||
-          null,
-
-        show_on_calendar:
-          jShowCalendar
-            ? jShowCalendar.checked
-            : true
-
-      })
-      .select(`
-        id,
-        name,
-        due_date
-      `)
-      .single();
-
-
-    if (error) {
-      throw error;
-    }
-
-
-    console.log(
-      'Job created:',
-      data
-    );
-
-
-    setStatus(
-      jobFormStatus,
-      'Job saved!'
-    );
-
-
-    // Tell dashboard data changed
-    window.dispatchEvent(
-      new CustomEvent(
-        'hardstyle:data-changed',
-        {
-          detail: {
-            type: 'job',
-            id: data.id
           }
-        }
-      )
-    );
-
-
-    // Force immediate calendar refresh
-    if (
-      typeof window
-        .refreshHardstyleCalendar ===
-      'function'
-    ) {
-      await window
-        .refreshHardstyleCalendar();
+        )
+        .join('')
     }
-
-
-    setTimeout(() => {
-
-      jobDialog.close();
-
-      resetJobForm();
-
-    }, 300);
-
-  } catch (error) {
-
-    console.error(
-      'Create job error:',
-      error
-    );
-
-    setStatus(
-      jobFormStatus,
-      error.message ||
-      'Could not save job.',
-      true
-    );
-
-  } finally {
-
-    saveJob.disabled = false;
-
-    saveJob.textContent =
-      'Add Job';
-  }
+  `;
 }
 
 
-/* =========================
-   RESET JOB
-========================= */
+addJobBtn
+  ?.addEventListener(
+    'click',
+    async () => {
 
-function resetJobForm() {
-  if (jName) {
-    jName.value = '';
-  }
+      try {
 
-  if (jContactSearch) {
-    jContactSearch.value = '';
-  }
+        await requireSession();
 
-  if (jContact) {
-    jContact.value = '';
-  }
+        jContactSearch.value =
+          '';
 
-  if (jOwner) {
-    jOwner.value = '';
-  }
+        await loadJobOptions();
 
-  if (jStatus) {
-    jStatus.value =
-      'paid_in_work';
-  }
+        jobDialog.showModal();
 
-  if (jImportance) {
-    jImportance.value =
-      '3';
-  }
+      } catch (error) {
 
-  if (jDue) {
-    jDue.value = '';
-  }
+        alert(
+          error.message
+        );
 
-  if (jNotes) {
-    jNotes.value = '';
-  }
+      }
 
-  if (jShowCalendar) {
-    jShowCalendar.checked =
-      true;
-  }
-
-  setStatus(
-    jobFormStatus,
-    ''
+    }
   );
-}
 
 
-/* =========================
-   CREATE FIGHT
-========================= */
+addFightBtn
+  ?.addEventListener(
+    'click',
+    async () => {
 
-async function createFight() {
-  try {
-    await requireSession();
+      try {
 
-    if (!fFighter?.value) {
-      setStatus(
-        fightFormStatus,
-        'Please select a fighter.',
-        true
-      );
+        await requireSession();
 
-      return;
+        await loadFighters();
+
+        fightDialog.showModal();
+
+      } catch (error) {
+
+        alert(
+          error.message
+        );
+
+      }
+
     }
-
-    if (!fDate?.value) {
-      setStatus(
-        fightFormStatus,
-        'Please select a fight date.',
-        true
-      );
-
-      return;
-    }
-
-
-    saveFight.disabled = true;
-
-    saveFight.textContent =
-      'Saving...';
-
-
-    setStatus(
-      fightFormStatus,
-      'Saving fight...'
-    );
-
-
-    const {
-      data,
-      error
-    } = await supabase
-      .from('fights')
-      .insert({
-
-        fighter_id:
-          Number(
-            fFighter.value
-          ),
-
-        opponent:
-          fOpponent?.value.trim() ||
-          null,
-
-        promotion:
-          fPromotion?.value.trim() ||
-          null,
-
-        event_name:
-          fEvent?.value.trim() ||
-          null,
-
-        fight_date:
-          fDate.value,
-
-        result:
-          fResult?.value.trim() ||
-          null,
-
-        notes:
-          fNotes?.value.trim() ||
-          null,
-
-        show_on_calendar:
-          fShowCalendar
-            ? fShowCalendar.checked
-            : true
-
-      })
-      .select(`
-        id,
-        fighter_id,
-        fight_date
-      `)
-      .single();
-
-
-    if (error) {
-      throw error;
-    }
-
-
-    console.log(
-      'Fight created:',
-      data
-    );
-
-
-    setStatus(
-      fightFormStatus,
-      'Fight saved!'
-    );
-
-
-    window.dispatchEvent(
-      new CustomEvent(
-        'hardstyle:data-changed',
-        {
-          detail: {
-            type: 'fight',
-            id: data.id
-          }
-        }
-      )
-    );
-
-
-    // Force calendar refresh
-    if (
-      typeof window
-        .refreshHardstyleCalendar ===
-      'function'
-    ) {
-      await window
-        .refreshHardstyleCalendar();
-    }
-
-
-    setTimeout(() => {
-
-      fightDialog.close();
-
-      resetFightForm();
-
-    }, 300);
-
-  } catch (error) {
-
-    console.error(
-      'Create fight error:',
-      error
-    );
-
-    setStatus(
-      fightFormStatus,
-      error.message ||
-      'Could not save fight.',
-      true
-    );
-
-  } finally {
-
-    saveFight.disabled =
-      false;
-
-    saveFight.textContent =
-      'Add Fight';
-  }
-}
-
-
-/* =========================
-   RESET FIGHT
-========================= */
-
-function resetFightForm() {
-  if (fFighter) {
-    fFighter.value = '';
-  }
-
-  if (fOpponent) {
-    fOpponent.value = '';
-  }
-
-  if (fPromotion) {
-    fPromotion.value = '';
-  }
-
-  if (fEvent) {
-    fEvent.value = '';
-  }
-
-  if (fDate) {
-    fDate.value = '';
-  }
-
-  if (fResult) {
-    fResult.value = '';
-  }
-
-  if (fNotes) {
-    fNotes.value = '';
-  }
-
-  if (fShowCalendar) {
-    fShowCalendar.checked =
-      true;
-  }
-
-  setStatus(
-    fightFormStatus,
-    ''
   );
-}
 
 
-/* =========================
-   BUTTON EVENTS
-========================= */
+saveJob
+  ?.addEventListener(
+    'click',
+    async () => {
 
-addJobBtn?.addEventListener(
-  'click',
-  openJobDialog
-);
+      try {
 
-
-addFightBtn?.addEventListener(
-  'click',
-  openFightDialog
-);
+        await requireSession();
 
 
-saveJob?.addEventListener(
-  'click',
-  createJob
-);
+        if (!jName.value.trim()) {
+          throw new Error(
+            'Enter a job name.'
+          );
+        }
 
 
-saveFight?.addEventListener(
-  'click',
-  createFight
-);
+        if (!jContact.value) {
+          throw new Error(
+            'Select a contact.'
+          );
+        }
+
+
+        if (!jOwner.value) {
+          throw new Error(
+            'Select an owner.'
+          );
+        }
+
+
+        if (!jDue.value) {
+          throw new Error(
+            'Select a due date.'
+          );
+        }
+
+
+        saveJob.disabled =
+          true;
+
+        saveJob.textContent =
+          'Saving...';
+
+
+        setStatus(
+          jobFormStatus,
+          'Saving...'
+        );
+
+
+        const {
+          data,
+          error
+        } = await supabase
+          .from('jobs')
+          .insert({
+
+            name:
+              jName.value.trim(),
+
+            contact_id:
+              Number(
+                jContact.value
+              ),
+
+            owner_id:
+              jOwner.value,
+
+            status:
+              jStatus.value,
+
+            importance:
+              Number(
+                jImportance.value
+              ),
+
+            due_date:
+              jDue.value,
+
+            notes:
+              jNotes.value.trim() ||
+              null,
+
+            show_on_calendar:
+              jShowCalendar.checked
+
+          })
+          .select(`
+            id,
+            name
+          `)
+          .single();
+
+
+        if (error) {
+          throw error;
+        }
+
+
+        // DIRECT REFRESH.
+        await refreshCalendar();
+
+
+        setStatus(
+          jobFormStatus,
+          'Job saved!'
+        );
+
+
+        setTimeout(
+          () => {
+
+            jobDialog.close();
+
+            jName.value = '';
+            jContactSearch.value = '';
+            jContact.value = '';
+            jOwner.value = '';
+            jDue.value = '';
+            jNotes.value = '';
+            jImportance.value = '3';
+            jShowCalendar.checked = true;
+
+          },
+          250
+        );
+
+
+      } catch (error) {
+
+        console.error(
+          'Save job error:',
+          error
+        );
+
+        setStatus(
+          jobFormStatus,
+          error.message,
+          true
+        );
+
+
+      } finally {
+
+        saveJob.disabled =
+          false;
+
+        saveJob.textContent =
+          'Add Job';
+
+      }
+
+    }
+  );
+
+
+saveFight
+  ?.addEventListener(
+    'click',
+    async () => {
+
+      try {
+
+        await requireSession();
+
+
+        if (!fFighter.value) {
+          throw new Error(
+            'Select a fighter.'
+          );
+        }
+
+
+        if (!fDate.value) {
+          throw new Error(
+            'Select a fight date.'
+          );
+        }
+
+
+        saveFight.disabled =
+          true;
+
+        saveFight.textContent =
+          'Saving...';
+
+
+        const {
+          error
+        } = await supabase
+          .from('fights')
+          .insert({
+
+            fighter_id:
+              Number(
+                fFighter.value
+              ),
+
+            opponent:
+              fOpponent.value.trim() ||
+              null,
+
+            promotion:
+              fPromotion.value.trim() ||
+              null,
+
+            event_name:
+              fEvent.value.trim() ||
+              null,
+
+            fight_date:
+              fDate.value,
+
+            result:
+              fResult.value.trim() ||
+              null,
+
+            notes:
+              fNotes.value.trim() ||
+              null,
+
+            show_on_calendar:
+              fShowCalendar.checked
+
+          });
+
+
+        if (error) {
+          throw error;
+        }
+
+
+        await refreshCalendar();
+
+
+        setStatus(
+          fightFormStatus,
+          'Fight saved!'
+        );
+
+
+        setTimeout(
+          () => {
+
+            fightDialog.close();
+
+            fFighter.value = '';
+            fOpponent.value = '';
+            fPromotion.value = '';
+            fEvent.value = '';
+            fDate.value = '';
+            fResult.value = '';
+            fNotes.value = '';
+            fShowCalendar.checked = true;
+
+          },
+          250
+        );
+
+
+      } catch (error) {
+
+        console.error(
+          'Save fight error:',
+          error
+        );
+
+        setStatus(
+          fightFormStatus,
+          error.message,
+          true
+        );
+
+
+      } finally {
+
+        saveFight.disabled =
+          false;
+
+        saveFight.textContent =
+          'Add Fight';
+
+      }
+
+    }
+  );
