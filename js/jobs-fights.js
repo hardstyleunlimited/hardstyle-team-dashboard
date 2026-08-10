@@ -648,19 +648,29 @@ saveFight
 
 
         if (error) {
-          throw error;
-        }
+  throw error;
+}
 
 
-        await refreshCalendar();
+await refreshCalendar();
 
 
-        setStatus(
-          fightFormStatus,
-          'Fight saved!'
-        );
+window.dispatchEvent(
+  new CustomEvent(
+    'hardstyle:data-changed',
+    {
+      detail: {
+        type: 'fight'
+      }
+    }
+  )
+);
 
 
+setStatus(
+  fightFormStatus,
+  'Fight saved!'
+);
         setTimeout(
           () => {
 
