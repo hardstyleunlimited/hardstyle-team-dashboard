@@ -6,9 +6,7 @@ import { supabase } from './supabase.js';
 ========================================================= */
 
 const fighterList =
-  document.getElementById(
-    'fighterList'
-  );
+  document.getElementById('fighterList');
 
 
 /* =========================================================
@@ -16,6 +14,7 @@ const fighterList =
 ========================================================= */
 
 let fightersCache = [];
+let allFightersCache = [];
 let profilesCache = [];
 let tasksCache = [];
 
@@ -65,11 +64,17 @@ function todayString() {
 
     String(
       date.getMonth() + 1
-    ).padStart(2, '0'),
+    ).padStart(
+      2,
+      '0'
+    ),
 
     String(
       date.getDate()
-    ).padStart(2, '0')
+    ).padStart(
+      2,
+      '0'
+    )
 
   ].join('-');
 }
@@ -81,7 +86,8 @@ function getProfileName(
   const profile =
     profilesCache.find(
       item =>
-        item.id === profileId
+        item.id ===
+        profileId
     );
 
   return (
@@ -96,11 +102,20 @@ function taskStatusLabel(
   status
 ) {
   const labels = {
-    open: 'To Do',
-    pending: 'To Do',
-    in_progress: 'In Progress',
-    complete: 'Complete',
-    completed: 'Complete'
+    open:
+      'To Do',
+
+    pending:
+      'To Do',
+
+    in_progress:
+      'In Progress',
+
+    complete:
+      'Complete',
+
+    completed:
+      'Complete'
   };
 
   return (
@@ -111,12 +126,21 @@ function taskStatusLabel(
 }
 
 
-function isTaskComplete(
-  task
-) {
+function isTaskComplete(task) {
   return (
-    task.status === 'complete' ||
-    task.status === 'completed'
+    task.status ===
+      'complete' ||
+    task.status ===
+      'completed'
+  );
+}
+
+
+function fighterName(fighter) {
+  return (
+    fighter?.contacts?.name ||
+    fighter?.nickname ||
+    `Fighter ${fighter?.id ?? ''}`
   );
 }
 
@@ -126,6 +150,7 @@ function isTaskComplete(
 ========================================================= */
 
 function injectStyles() {
+
   if (
     document.getElementById(
       'fightersPanelStyles'
@@ -136,7 +161,9 @@ function injectStyles() {
 
 
   const style =
-    document.createElement('style');
+    document.createElement(
+      'style'
+    );
 
 
   style.id =
@@ -145,29 +172,79 @@ function injectStyles() {
 
   style.textContent = `
 
-    .fighter-breakout {
-      margin-bottom: 12px;
+    /* ================================
+       ROSTER TOOLBAR
+    ================================ */
 
-      background: var(--card);
+    .fighter-roster-toolbar {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+
+      margin-bottom:14px;
+      padding:12px;
+
+      background:var(--card);
 
       border:
         1px solid var(--border);
 
-      border-radius: 12px;
+      border-radius:10px;
+    }
 
-      overflow: hidden;
+
+    .fighter-roster-controls {
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+
+
+    .fighter-roster-controls select {
+      min-width:230px;
+
+      padding:8px;
+
+      color:var(--text);
+      background:#111216;
+
+      border:
+        1px solid var(--border);
+
+      border-radius:7px;
+    }
+
+
+    /* ================================
+       FIGHTER BREAKOUT
+    ================================ */
+
+    .fighter-breakout {
+      margin-bottom:12px;
+
+      background:var(--card);
+
+      border:
+        1px solid var(--border);
+
+      border-radius:12px;
+
+      overflow:hidden;
     }
 
 
     .fighter-breakout-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
 
-      padding: 14px;
+      padding:14px;
 
-      cursor: pointer;
+      cursor:pointer;
     }
 
 
@@ -178,22 +255,22 @@ function injectStyles() {
 
 
     .fighter-name {
-      font-weight: 900;
-      font-size: 16px;
+      font-weight:900;
+      font-size:16px;
     }
 
 
     .fighter-next {
-      margin-top: 5px;
+      margin-top:5px;
 
-      color: var(--muted);
+      color:var(--muted);
 
-      font-size: 12px;
+      font-size:12px;
     }
 
 
     .fighter-chevron {
-      font-size: 18px;
+      font-size:18px;
 
       transition:
         transform .15s ease;
@@ -208,20 +285,25 @@ function injectStyles() {
 
 
     .fighter-breakout-body {
-      display: none;
+      display:none;
 
-      padding: 0 14px 14px;
+      padding:
+        0 14px 14px;
     }
 
 
     .fighter-breakout.open
     .fighter-breakout-body {
-      display: block;
+      display:block;
     }
 
 
+    /* ================================
+       FIGHTER INFO
+    ================================ */
+
     .fighter-info-grid {
-      display: grid;
+      display:grid;
 
       grid-template-columns:
         repeat(
@@ -229,58 +311,130 @@ function injectStyles() {
           minmax(0,1fr)
         );
 
-      gap: 10px;
+      gap:10px;
 
-      margin-top: 4px;
+      margin-top:4px;
     }
 
 
     .fighter-info-card {
-      padding: 12px;
+      padding:12px;
 
-      background: #111216;
+      background:#111216;
 
       border:
         1px solid var(--border);
 
-      border-radius: 9px;
+      border-radius:9px;
     }
 
 
     .fighter-section-label {
-      margin-bottom: 9px;
+      margin-bottom:9px;
 
-      color: var(--muted);
+      color:var(--muted);
 
-      font-size: 10px;
-      font-weight: 800;
+      font-size:10px;
+      font-weight:800;
 
-      letter-spacing: 1px;
+      letter-spacing:1px;
 
-      text-transform: uppercase;
+      text-transform:uppercase;
     }
 
 
     .fighter-detail-row {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
+      display:flex;
 
-      padding: 5px 0;
+      justify-content:
+        space-between;
 
-      font-size: 12px;
+      gap:12px;
+
+      padding:5px 0;
+
+      font-size:12px;
+
+      border-bottom:
+        1px solid rgba(
+          255,
+          255,
+          255,
+          .035
+        );
+    }
+
+
+    .fighter-detail-row:last-child {
+      border-bottom:0;
     }
 
 
     .fighter-detail-row span:first-child {
-      color: var(--muted);
+      color:var(--muted);
     }
 
 
-    .design-task-section {
-      margin-top: 12px;
+    /* ================================
+       BUTTONS
+    ================================ */
 
-      padding-top: 12px;
+    .fighter-small-btn {
+      display:inline-block;
+
+      padding:6px 8px;
+
+      color:var(--text);
+
+      background:var(--card);
+
+      border:
+        1px solid var(--border);
+
+      border-radius:7px;
+
+      font-size:10px;
+
+      text-decoration:none;
+
+      cursor:pointer;
+    }
+
+
+    .fighter-small-btn.primary {
+      color:#111;
+
+      background:#fff;
+
+      border-color:#fff;
+
+      font-weight:700;
+    }
+
+
+    .fighter-small-btn:disabled {
+      opacity:.45;
+      cursor:not-allowed;
+    }
+
+
+    .fighter-remove-btn {
+      color:#fecaca;
+
+      border-color:#7f1d1d;
+
+      margin-left:6px;
+    }
+
+
+    /* ================================
+       DESIGN TASKS
+    ================================ */
+
+    .design-task-section {
+      margin-top:12px;
+
+      padding-top:12px;
 
       border-top:
         1px solid var(--border);
@@ -288,116 +442,93 @@ function injectStyles() {
 
 
     .design-task-head {
-      display: flex;
+      display:flex;
 
       justify-content:
         space-between;
 
-      align-items: center;
+      align-items:center;
 
-      gap: 10px;
+      gap:10px;
 
-      margin-bottom: 9px;
+      margin-bottom:9px;
     }
 
 
     .design-task {
-      margin-bottom: 7px;
+      margin-bottom:7px;
 
-      padding: 10px;
+      padding:10px;
 
-      background: #111216;
+      background:#111216;
 
       border:
         1px solid var(--border);
 
-      border-radius: 9px;
+      border-radius:9px;
     }
 
 
     .design-task.complete {
-      opacity: .55;
+      opacity:.55;
     }
 
 
     .design-task-title {
-      font-weight: 700;
-      font-size: 13px;
+      font-weight:700;
+      font-size:13px;
     }
 
 
     .design-task-meta {
-      margin-top: 5px;
+      margin-top:5px;
 
-      color: var(--muted);
+      color:var(--muted);
 
-      font-size: 11px;
+      font-size:11px;
 
-      line-height: 1.5;
+      line-height:1.5;
     }
 
 
     .design-task-actions {
-      display: flex;
+      display:flex;
 
-      gap: 6px;
+      gap:6px;
 
-      flex-wrap: wrap;
+      flex-wrap:wrap;
 
-      margin-top: 8px;
+      margin-top:8px;
     }
 
 
-    .fighter-small-btn {
-      padding: 6px 8px;
-
-      color: var(--text);
-
-      background: var(--card);
-
-      border:
-        1px solid var(--border);
-
-      border-radius: 7px;
-
-      font-size: 10px;
-    }
-
-
-    .fighter-small-btn.primary {
-      color: #111;
-
-      background: #fff;
-
-      border-color: #fff;
-
-      font-weight: 700;
-    }
-
+    /* ================================
+       TASK FORM
+    ================================ */
 
     .fighter-task-form {
-      display: none;
+      display:none;
 
-      margin-top: 10px;
+      margin-top:10px;
 
-      padding: 12px;
+      padding:12px;
 
-      background: #111216;
+      background:#111216;
 
       border:
         1px solid var(--border);
 
-      border-radius: 9px;
+      border-radius:9px;
     }
 
 
     .fighter-task-form.open {
-      display: block;
+      display:block;
     }
 
 
     .fighter-task-grid {
-      display: grid;
+      display:grid;
 
       grid-template-columns:
         repeat(
@@ -405,16 +536,16 @@ function injectStyles() {
           minmax(0,1fr)
         );
 
-      gap: 9px;
+      gap:9px;
     }
 
 
     .fighter-task-field {
-      display: flex;
+      display:flex;
 
-      flex-direction: column;
+      flex-direction:column;
 
-      gap: 5px;
+      gap:5px;
     }
 
 
@@ -425,48 +556,48 @@ function injectStyles() {
 
 
     .fighter-task-field label {
-      color: var(--muted);
+      color:var(--muted);
 
-      font-size: 10px;
+      font-size:10px;
     }
 
 
     .fighter-task-field input,
     .fighter-task-field select,
     .fighter-task-field textarea {
-      width: 100%;
+      width:100%;
 
-      padding: 8px;
+      padding:8px;
 
-      color: var(--text);
+      color:var(--text);
 
-      background: var(--card);
+      background:var(--card);
 
       border:
         1px solid var(--border);
 
-      border-radius: 7px;
+      border-radius:7px;
     }
 
 
     .fighter-empty {
-      padding: 12px;
+      padding:12px;
 
-      color: var(--muted);
+      color:var(--muted);
 
-      font-size: 12px;
+      font-size:12px;
 
-      text-align: center;
+      text-align:center;
 
       border:
         1px dashed var(--border);
 
-      border-radius: 9px;
+      border-radius:9px;
     }
 
 
     @media (
-      max-width: 700px
+      max-width:700px
     ) {
 
       .fighter-info-grid,
@@ -477,8 +608,17 @@ function injectStyles() {
 
 
       .fighter-task-field.full {
-        grid-column:
-          auto;
+        grid-column:auto;
+      }
+
+
+      .fighter-roster-controls {
+        width:100%;
+      }
+
+
+      .fighter-roster-controls select {
+        width:100%;
       }
 
     }
@@ -520,12 +660,15 @@ export async function refreshFightersPanel() {
     await Promise.all([
 
 
+      /* ALL FIGHTERS */
+
       supabase
         .from('fighters')
         .select(`
           id,
           nickname,
           contact_id,
+          show_on_fighters_panel,
           created_at,
 
           contacts (
@@ -551,10 +694,12 @@ export async function refreshFightersPanel() {
         .order(
           'created_at',
           {
-            ascending: true
+            ascending:true
           }
         ),
 
+
+      /* EMPLOYEES */
 
       supabase
         .from('profiles')
@@ -566,10 +711,12 @@ export async function refreshFightersPanel() {
         .order(
           'full_name',
           {
-            ascending: true
+            ascending:true
           }
         ),
 
+
+      /* DESIGN TASKS */
 
       supabase
         .from('tasks')
@@ -595,8 +742,8 @@ export async function refreshFightersPanel() {
         .order(
           'due_date',
           {
-            ascending: true,
-            nullsFirst: false
+            ascending:true,
+            nullsFirst:false
           }
         )
 
@@ -615,10 +762,16 @@ export async function refreshFightersPanel() {
 
     fighterList.innerHTML = `
 
-      <div class="muted">
+      <div class="fighter-empty">
+
+        Could not load fighters.
+
+        <br><br>
+
         ${esc(
           fightersResult.error.message
         )}
+
       </div>
 
     `;
@@ -652,9 +805,28 @@ export async function refreshFightersPanel() {
   }
 
 
-  fightersCache =
+  /*
+    Keep every fighter available
+    for the roster dropdown.
+  */
+
+  allFightersCache =
     fightersResult.data ??
     [];
+
+
+  /*
+    ONLY manually assigned fighters
+    appear in the actual panel.
+  */
+
+  fightersCache =
+    allFightersCache.filter(
+      fighter =>
+        fighter
+          .show_on_fighters_panel ===
+        true
+    );
 
 
   profilesCache =
@@ -668,12 +840,11 @@ export async function refreshFightersPanel() {
 
 
   renderFighters();
-
 }
 
 
 /* =========================================================
-   NEXT FIGHT
+   NEXT / CURRENT FIGHT
 ========================================================= */
 
 function getNextFight(
@@ -702,7 +873,7 @@ function getNextFight(
           ) >= today
       )
       .sort(
-        (a, b) =>
+        (a,b) =>
           String(
             a.fight_date
           ).localeCompare(
@@ -721,8 +892,9 @@ function getNextFight(
 
 
   /*
-    If there is no upcoming fight,
-    show the most recent fight.
+    No upcoming fight.
+
+    Show most recent fight instead.
   */
 
   return [...fights]
@@ -731,7 +903,7 @@ function getNextFight(
         fight.fight_date
     )
     .sort(
-      (a, b) =>
+      (a,b) =>
         String(
           b.fight_date
         ).localeCompare(
@@ -741,34 +913,160 @@ function getNextFight(
         )
     )[0] ||
     null;
-
 }
 
 
 /* =========================================================
-   RENDER FIGHTERS
+   RENDER PANEL
 ========================================================= */
 
 function renderFighters() {
+
+  /*
+    Fighters NOT currently assigned
+    to the panel.
+  */
+
+  const availableFighters =
+    allFightersCache.filter(
+      fighter =>
+        fighter
+          .show_on_fighters_panel !==
+        true
+    );
+
+
+  const fighterOptions =
+    availableFighters
+      .map(
+        fighter => `
+
+          <option
+            value="${fighter.id}"
+          >
+            ${esc(
+              fighterName(
+                fighter
+              )
+            )}
+          </option>
+
+        `
+      )
+      .join('');
+
+
+  /*
+    Roster control.
+  */
+
+  const rosterToolbar = `
+
+    <div
+      class="fighter-roster-toolbar"
+    >
+
+      <div>
+
+        <div
+          class="fighter-section-label"
+        >
+          Fighter Panel Roster
+        </div>
+
+
+        <div
+          class="muted"
+          style="
+            font-size:11px;
+          "
+        >
+          Choose which fighters are actively displayed here.
+        </div>
+
+      </div>
+
+
+      <div
+        class="fighter-roster-controls"
+      >
+
+        <select
+          id="fighterPanelAddSelect"
+        >
+
+          <option value="">
+            Select fighter to add
+          </option>
+
+          ${fighterOptions}
+
+        </select>
+
+
+        <button
+          id="addFighterToPanelBtn"
+          class="
+            fighter-small-btn
+            primary
+          "
+          type="button"
+
+          ${
+            availableFighters.length
+              ? ''
+              : 'disabled'
+          }
+        >
+
+          + Add Fighter To Panel
+
+        </button>
+
+      </div>
+
+    </div>
+
+  `;
+
+
+  /*
+    No one assigned yet.
+  */
 
   if (
     !fightersCache.length
   ) {
 
-    fighterList.innerHTML = `
+    fighterList.innerHTML =
+      rosterToolbar +
+      `
 
-      <div class="fighter-empty">
-        No fighters found.
-      </div>
+        <div class="fighter-empty">
 
-    `;
+          No fighters assigned to this panel yet.
 
+          <br><br>
+
+          Use the dropdown above to add one.
+
+        </div>
+
+      `;
+
+
+    bindRosterEvents();
 
     return;
   }
 
 
+  /*
+    Assigned roster.
+  */
+
   fighterList.innerHTML =
+    rosterToolbar +
     fightersCache
       .map(
         fighter =>
@@ -779,13 +1077,14 @@ function renderFighters() {
       .join('');
 
 
-  bindFighterEvents();
+  bindRosterEvents();
 
+  bindFighterEvents();
 }
 
 
 /* =========================================================
-   FIGHTER CARD
+   FIGHTER BREAKOUT CARD
 ========================================================= */
 
 function fighterCard(
@@ -793,9 +1092,9 @@ function fighterCard(
 ) {
 
   const name =
-    fighter.contacts?.name ||
-    fighter.nickname ||
-    `Fighter ${fighter.id}`;
+    fighterName(
+      fighter
+    );
 
 
   const nextFight =
@@ -823,6 +1122,9 @@ function fighterCard(
       data-fighter-id="${fighter.id}"
     >
 
+
+      <!-- HEADER -->
+
       <div
         class="fighter-breakout-head"
       >
@@ -830,7 +1132,9 @@ function fighterCard(
         <div>
 
           <div class="fighter-name">
+
             ${esc(name)}
+
           </div>
 
 
@@ -841,7 +1145,9 @@ function fighterCard(
               ? `
 
                   <div class="fighter-next">
-                    "${esc(fighter.nickname)}"
+                    "${esc(
+                      fighter.nickname
+                    )}"
                   </div>
 
                 `
@@ -855,12 +1161,14 @@ function fighterCard(
             ${
               nextFight
 
-                ? `Next Fight:
-                   ${esc(
-                     formatDate(
-                       nextFight.fight_date
-                     )
-                   )}`
+                ? `Next Fight: ${
+                    esc(
+                      formatDate(
+                        nextFight
+                          .fight_date
+                      )
+                    )
+                  }`
 
                 : 'No fight scheduled'
             }
@@ -877,17 +1185,27 @@ function fighterCard(
       </div>
 
 
-      <div class="fighter-breakout-body">
+      <!-- BODY -->
+
+      <div
+        class="fighter-breakout-body"
+      >
 
 
-        <div class="fighter-info-grid">
+        <div
+          class="fighter-info-grid"
+        >
 
 
-          <!-- FIGHT INFO -->
+          <!-- FIGHT INFORMATION -->
 
-          <div class="fighter-info-card">
+          <div
+            class="fighter-info-card"
+          >
 
-            <div class="fighter-section-label">
+            <div
+              class="fighter-section-label"
+            >
               Fight Information
             </div>
 
@@ -903,11 +1221,13 @@ function fighterCard(
                       'TBD'
                     )}
 
+
                     ${detailRow(
                       'Promotion',
                       nextFight.promotion ||
                       'Not listed'
                     )}
+
 
                     ${detailRow(
                       'Event',
@@ -915,18 +1235,22 @@ function fighterCard(
                       'Not listed'
                     )}
 
+
                     ${detailRow(
                       'Fight Date',
                       formatDate(
-                        nextFight.fight_date
+                        nextFight
+                          .fight_date
                       )
                     )}
+
 
                     ${detailRow(
                       'Result',
                       nextFight.result ||
                       'Upcoming'
                     )}
+
 
                     ${detailRow(
                       'Notes',
@@ -938,7 +1262,9 @@ function fighterCard(
 
                 : `
 
-                    <div class="fighter-empty">
+                    <div
+                      class="fighter-empty"
+                    >
                       No fight information yet.
                     </div>
 
@@ -948,11 +1274,15 @@ function fighterCard(
           </div>
 
 
-          <!-- FIGHTER INFO -->
+          <!-- FIGHTER INFORMATION -->
 
-          <div class="fighter-info-card">
+          <div
+            class="fighter-info-card"
+          >
 
-            <div class="fighter-section-label">
+            <div
+              class="fighter-section-label"
+            >
               Fighter
             </div>
 
@@ -972,21 +1302,25 @@ function fighterCard(
 
             ${detailRow(
               'Phone',
-              fighter.contacts?.phone ||
+              fighter
+                .contacts
+                ?.phone ||
               'Not listed'
             )}
 
 
             ${detailRow(
               'Instagram',
-              fighter.contacts?.instagram ||
+              fighter
+                .contacts
+                ?.instagram ||
               'Not listed'
             )}
 
 
             <div
               style="
-                margin-top:10px;
+                margin-top:12px;
               "
             >
 
@@ -1000,6 +1334,19 @@ function fighterCard(
                 Open Design Center
               </a>
 
+
+              <button
+                class="
+                  fighter-small-btn
+                  fighter-remove-btn
+                  removeFighterFromPanelBtn
+                "
+                data-fighter-id="${fighter.id}"
+                type="button"
+              >
+                Remove From Panel
+              </button>
+
             </div>
 
           </div>
@@ -1010,15 +1357,22 @@ function fighterCard(
 
         <!-- DESIGN TASKS -->
 
-        <div class="design-task-section">
+        <div
+          class="design-task-section"
+        >
 
-          <div class="design-task-head">
+          <div
+            class="design-task-head"
+          >
 
             <div>
 
-              <div class="fighter-section-label">
+              <div
+                class="fighter-section-label"
+              >
                 Design Tasks
               </div>
+
 
               <div
                 class="muted"
@@ -1026,7 +1380,7 @@ function fighterCard(
                   font-size:11px;
                 "
               >
-                Assignable work for this fighter
+                Assign design work to team members
               </div>
 
             </div>
@@ -1066,7 +1420,9 @@ function fighterCard(
 
                 : `
 
-                    <div class="fighter-empty">
+                    <div
+                      class="fighter-empty"
+                    >
                       No design tasks assigned.
                     </div>
 
@@ -1076,10 +1432,12 @@ function fighterCard(
           </div>
 
 
-          ${designTaskForm(
-            fighter,
-            nextFight
-          )}
+          ${
+            designTaskForm(
+              fighter,
+              nextFight
+            )
+          }
 
 
         </div>
@@ -1090,7 +1448,6 @@ function fighterCard(
     </div>
 
   `;
-
 }
 
 
@@ -1105,7 +1462,9 @@ function detailRow(
 
   return `
 
-    <div class="fighter-detail-row">
+    <div
+      class="fighter-detail-row"
+    >
 
       <span>
         ${esc(label)}
@@ -1118,7 +1477,6 @@ function detailRow(
     </div>
 
   `;
-
 }
 
 
@@ -1141,6 +1499,7 @@ function designTaskCard(
     <div
       class="
         design-task
+
         ${
           complete
             ? 'complete'
@@ -1149,7 +1508,9 @@ function designTaskCard(
       "
     >
 
-      <div class="design-task-title">
+      <div
+        class="design-task-title"
+      >
 
         ${
           complete
@@ -1162,7 +1523,9 @@ function designTaskCard(
       </div>
 
 
-      <div class="design-task-meta">
+      <div
+        class="design-task-meta"
+      >
 
         Assigned:
         ${esc(
@@ -1173,6 +1536,7 @@ function designTaskCard(
 
         <br>
 
+
         Due:
         ${esc(
           formatDate(
@@ -1182,12 +1546,14 @@ function designTaskCard(
 
         <br>
 
+
         Status:
         ${esc(
           taskStatusLabel(
             task.status
           )
         )}
+
 
         ${
           task.description
@@ -1209,7 +1575,9 @@ function designTaskCard(
       </div>
 
 
-      <div class="design-task-actions">
+      <div
+        class="design-task-actions"
+      >
 
         ${
           !complete
@@ -1249,7 +1617,6 @@ function designTaskCard(
     </div>
 
   `;
-
 }
 
 
@@ -1269,8 +1636,12 @@ function designTaskForm(
       id="designTaskForm-${fighter.id}"
     >
 
-      <div class="fighter-task-grid">
+      <div
+        class="fighter-task-grid"
+      >
 
+
+        <!-- TITLE -->
 
         <div
           class="
@@ -1283,6 +1654,7 @@ function designTaskForm(
             Task Name
           </label>
 
+
           <input
             class="newTaskTitle"
             type="text"
@@ -1292,11 +1664,16 @@ function designTaskForm(
         </div>
 
 
-        <div class="fighter-task-field">
+        <!-- OWNER -->
+
+        <div
+          class="fighter-task-field"
+        >
 
           <label>
             Assign To
           </label>
+
 
           <select
             class="newTaskOwner"
@@ -1305,6 +1682,7 @@ function designTaskForm(
             <option value="">
               Select team member
             </option>
+
 
             ${
               profilesCache
@@ -1332,11 +1710,16 @@ function designTaskForm(
         </div>
 
 
-        <div class="fighter-task-field">
+        <!-- DUE -->
+
+        <div
+          class="fighter-task-field"
+        >
 
           <label>
             Due Date
           </label>
+
 
           <input
             class="newTaskDue"
@@ -1345,6 +1728,8 @@ function designTaskForm(
 
         </div>
 
+
+        <!-- NOTES -->
 
         <div
           class="
@@ -1357,6 +1742,7 @@ function designTaskForm(
             Notes
           </label>
 
+
           <textarea
             class="newTaskDescription"
             rows="3"
@@ -1365,6 +1751,8 @@ function designTaskForm(
 
         </div>
 
+
+        <!-- CREATE -->
 
         <div
           class="
@@ -1394,18 +1782,254 @@ function designTaskForm(
     </div>
 
   `;
-
 }
 
 
 /* =========================================================
-   EVENTS
+   ROSTER EVENTS
+========================================================= */
+
+function bindRosterEvents() {
+
+  /*
+    ADD FIGHTER TO PANEL
+  */
+
+  const addButton =
+    document.getElementById(
+      'addFighterToPanelBtn'
+    );
+
+
+  addButton
+    ?.addEventListener(
+      'click',
+      async () => {
+
+        const select =
+          document.getElementById(
+            'fighterPanelAddSelect'
+          );
+
+
+        const fighterId =
+          Number(
+            select?.value
+          );
+
+
+        if (!fighterId) {
+
+          alert(
+            'Select a fighter to add.'
+          );
+
+          return;
+        }
+
+
+        addButton.disabled =
+          true;
+
+
+        addButton.textContent =
+          'Adding...';
+
+
+        const {
+          error
+        } =
+          await supabase
+            .from('fighters')
+            .update({
+
+              show_on_fighters_panel:
+                true
+
+            })
+            .eq(
+              'id',
+              fighterId
+            );
+
+
+        if (error) {
+
+          console.error(
+            'Add fighter to panel error:',
+            error
+          );
+
+
+          alert(
+            error.message
+          );
+
+
+          addButton.disabled =
+            false;
+
+
+          addButton.textContent =
+            '+ Add Fighter To Panel';
+
+
+          return;
+        }
+
+
+        window.dispatchEvent(
+          new CustomEvent(
+            'hardstyle:data-changed',
+            {
+              detail: {
+                type:
+                  'fighter-panel'
+              }
+            }
+          )
+        );
+
+
+        await refreshFightersPanel();
+
+      }
+    );
+
+
+  /*
+    REMOVE FIGHTER FROM PANEL
+  */
+
+  document
+    .querySelectorAll(
+      '.removeFighterFromPanelBtn'
+    )
+    .forEach(
+      button => {
+
+        button.addEventListener(
+          'click',
+          async event => {
+
+            event.stopPropagation();
+
+
+            const fighterId =
+              Number(
+                button.dataset
+                  .fighterId
+              );
+
+
+            const fighter =
+              allFightersCache.find(
+                item =>
+                  Number(
+                    item.id
+                  ) ===
+                  fighterId
+              );
+
+
+            const name =
+              fighterName(
+                fighter
+              );
+
+
+            const confirmed =
+              confirm(
+                `Remove ${name} from the Fighters panel?\n\nThis will NOT delete the fighter, fights, or design tasks.`
+              );
+
+
+            if (!confirmed) {
+              return;
+            }
+
+
+            button.disabled =
+              true;
+
+
+            button.textContent =
+              'Removing...';
+
+
+            const {
+              error
+            } =
+              await supabase
+                .from('fighters')
+                .update({
+
+                  show_on_fighters_panel:
+                    false
+
+                })
+                .eq(
+                  'id',
+                  fighterId
+                );
+
+
+            if (error) {
+
+              console.error(
+                'Remove fighter error:',
+                error
+              );
+
+
+              alert(
+                error.message
+              );
+
+
+              button.disabled =
+                false;
+
+
+              button.textContent =
+                'Remove From Panel';
+
+
+              return;
+            }
+
+
+            window.dispatchEvent(
+              new CustomEvent(
+                'hardstyle:data-changed',
+                {
+                  detail: {
+                    type:
+                      'fighter-panel'
+                  }
+                }
+              )
+            );
+
+
+            await refreshFightersPanel();
+
+          }
+        );
+
+      }
+    );
+}
+
+
+/* =========================================================
+   FIGHTER EVENTS
 ========================================================= */
 
 function bindFighterEvents() {
 
   /*
-    Expand / collapse fighter.
+    EXPAND / COLLAPSE
   */
 
   document
@@ -1436,7 +2060,7 @@ function bindFighterEvents() {
 
 
   /*
-    Show task form.
+    SHOW DESIGN TASK FORM
   */
 
   document
@@ -1475,7 +2099,7 @@ function bindFighterEvents() {
 
 
   /*
-    Create task.
+    CREATE DESIGN TASK
   */
 
   document
@@ -1501,7 +2125,7 @@ function bindFighterEvents() {
 
 
   /*
-    In progress.
+    MARK IN PROGRESS
   */
 
   document
@@ -1517,7 +2141,8 @@ function bindFighterEvents() {
 
             await updateTaskStatus(
               Number(
-                button.dataset.taskId
+                button.dataset
+                  .taskId
               ),
               'in_progress'
             );
@@ -1530,7 +2155,7 @@ function bindFighterEvents() {
 
 
   /*
-    Complete.
+    COMPLETE TASK
   */
 
   document
@@ -1546,7 +2171,8 @@ function bindFighterEvents() {
 
             await completeTask(
               Number(
-                button.dataset.taskId
+                button.dataset
+                  .taskId
               )
             );
 
@@ -1555,7 +2181,6 @@ function bindFighterEvents() {
 
       }
     );
-
 }
 
 
@@ -1577,10 +2202,12 @@ async function createDesignTask(
   const fightId =
     button.dataset
       .fightId
+
       ? Number(
           button.dataset
             .fightId
         )
+
       : null;
 
 
@@ -1631,7 +2258,6 @@ async function createDesignTask(
     );
 
     return;
-
   }
 
 
@@ -1642,7 +2268,6 @@ async function createDesignTask(
     );
 
     return;
-
   }
 
 
@@ -1653,7 +2278,6 @@ async function createDesignTask(
     );
 
     return;
-
   }
 
 
@@ -1724,13 +2348,11 @@ async function createDesignTask(
 
 
     return;
-
   }
 
 
   /*
-    Broadcast to other modules,
-    including My Work later.
+    Notify other dashboard modules.
   */
 
   window.dispatchEvent(
@@ -1738,7 +2360,8 @@ async function createDesignTask(
       'hardstyle:data-changed',
       {
         detail: {
-          type: 'task'
+          type:
+            'task'
         }
       }
     )
@@ -1746,7 +2369,6 @@ async function createDesignTask(
 
 
   await refreshFightersPanel();
-
 }
 
 
@@ -1781,12 +2403,17 @@ async function updateTaskStatus(
 
   if (error) {
 
+    console.error(
+      'Update task error:',
+      error
+    );
+
+
     alert(
       error.message
     );
 
     return;
-
   }
 
 
@@ -1795,7 +2422,8 @@ async function updateTaskStatus(
       'hardstyle:data-changed',
       {
         detail: {
-          type: 'task'
+          type:
+            'task'
         }
       }
     )
@@ -1803,7 +2431,6 @@ async function updateTaskStatus(
 
 
   await refreshFightersPanel();
-
 }
 
 
@@ -1845,12 +2472,17 @@ async function completeTask(
 
   if (error) {
 
+    console.error(
+      'Complete task error:',
+      error
+    );
+
+
     alert(
       error.message
     );
 
     return;
-
   }
 
 
@@ -1859,7 +2491,8 @@ async function completeTask(
       'hardstyle:data-changed',
       {
         detail: {
-          type: 'task'
+          type:
+            'task'
         }
       }
     )
@@ -1867,7 +2500,6 @@ async function completeTask(
 
 
   await refreshFightersPanel();
-
 }
 
 
@@ -1880,7 +2512,7 @@ window.refreshHardstyleFighters =
 
 
 /* =========================================================
-   DATA EVENT LISTENER
+   DATA CHANGE LISTENER
 ========================================================= */
 
 window.addEventListener(
@@ -1890,8 +2522,12 @@ window.addEventListener(
     if (
       event.detail?.type ===
         'fight' ||
+
       event.detail?.type ===
-        'task'
+        'task' ||
+
+      event.detail?.type ===
+        'fighter-panel'
     ) {
 
       await refreshFightersPanel();
@@ -1941,8 +2577,9 @@ async function start() {
         ) {
 
           setTimeout(
-            () =>
-              refreshFightersPanel(),
+            () => {
+              refreshFightersPanel();
+            },
             0
           );
 
@@ -1950,7 +2587,6 @@ async function start() {
 
       }
     );
-
 }
 
 
